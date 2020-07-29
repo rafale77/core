@@ -1,5 +1,4 @@
 """Component that will help set the Dlib face detect processing."""
-import io
 import logging
 import numpy as np
 import dlib
@@ -84,7 +83,6 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         def _trim_css_to_bounds(css, image_shape):
             return max(css[0], 0), min(css[1], image_shape[1]), min(css[2], image_shape[0]), max(css[3], 0)
 
-        face_locations = []
         (h, w) = image.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0,
             (300, 300), (104.0, 177.0, 123.0), swapRB=False, crop=False)
@@ -101,8 +99,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 (startX, startY, endX, endY) = box.astype("int")
                 face = dlib.rectangle(startX, startY, endX, endY)
                 dlibrect.append(face)
-                face_locations = [_trim_css_to_bounds(_rect_to_css(face), image.shape) for face in dlibrect]
-            return face_locations
+        return [_trim_css_to_bounds(_rect_to_css(face), image.shape) for face in dlibrect]
 
     def train_faces(self):
 
@@ -125,7 +122,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     face_bounding_boxes = self.locate(face)
             # If training image contains exactly one face
                     if len(face_bounding_boxes) == 1:
-                        face = cv2.cvtColor(np.array(face),cv2.COLOR_RGB2BGR)
+                        face = cv2.cvtColor(np.array(face),cv2.COLOR_BGR2RGB)
                         face_enc = face_recognition.face_encodings(face, face_bounding_boxes, model=self.fmodel)[0]
                 # Add face encoding for current image
                 # with corresponding label (name) to the training data
@@ -155,7 +152,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         found = []
         unknowns =[]
         if face_locations:
-            im = cv2.cvtColor(np.array(image),cv2.COLOR_RGB2BGR)
+            im = cv2.cvtColor(np.array(image),cv2.COLOR_BGR2RGB)
             unknowns = face_recognition.face_encodings(im, face_locations, model=self.fmodel)
             for unknown_face in unknowns:
                 name = self.clf.predict([unknown_face])
