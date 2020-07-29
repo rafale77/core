@@ -1,111 +1,122 @@
-"""Support for Cameras with FFmpeg as decoder."""
-import asyncio
+"""Component that will process object detection with opencv."""
+import io
 import logging
-import os
+import numpy as np
+import cv2
+# pylint: disable=import-error
 
 import voluptuous as vol
-import cv2
-from threading import Thread
 
-from homeassistant.components.camera import PLATFORM_SCHEMA, SUPPORT_STREAM, Camera
-from homeassistant.const import CONF_NAME
+from pathlib import Path
+import os
+
+from homeassistant.components.image_processing import (
+    CONF_ENTITY_ID,
+    CONF_CONFIDENCE,
+    CONF_NAME,
+    CONF_SOURCE,
+    PLATFORM_SCHEMA,
+    ImageProcessingEntity,
+)
+
+from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
 
-from . import CONF_EXTRA_ARGUMENTS, CONF_INPUT, DATA_FFMPEG
-
 _LOGGER = logging.getLogger(__name__)
+home = str(Path.home())+"/.homeassistant/model/"
 
-DEFAULT_NAME = "FFmpeg"
+CONF_CLASSIFIER = "classifier"
+CONFIDENCE_THRESHOLD = 0.5
+NMS_THRESHOLD = 0.4
+
+class_names = []
+with open(home+'cococlasses.txt', "r") as f:
+    class_names = [cname.strip() for cname in f.readlines()]
+
+ATTR_MATCHES = "matches"
+ATTR_TOTAL_MATCHES = "total_matches"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
-        vol.Required(CONF_INPUT): cv.string,
-        vol.Optional(CONF_EXTRA_ARGUMENTS): cv.string,
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+        vol.Optional(CONF_CLASSIFIER, default="person"): cv.string,
+        vol.Optional(CONF_CONFIDENCE, default=0.6): vol.Coerce(float),
     }
 )
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up a FFmpeg camera."""
-    async_add_entities([FFmpegCamera(hass, config, hass.data[DATA_FFMPEG])])
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Set up the opencv object detection platform."""
+    entities = []
+    for camera in config[CONF_SOURCE]:
+        entities.append(
+            OpenCVImageProcessor(
+                hass,
+                camera[CONF_ENTITY_ID],
+                camera.get(CONF_NAME),
+                config[CONF_CONFIDENCE],
+                config[CONF_CLASSIFIER],
+            )
+        )
 
-class Client:
-    """ Maintain live RTSP feed without buffering. """
-    _stream = None
+    add_entities(entities)
 
-    def __init__(self, rtsp_server_uri, extra_cmd):
-        """
-            rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
-        """
-        self.rtsp_server_uri = rtsp_server_uri
-        self.extra_cmd = extra_cmd
-        self.open()
 
-    def open(self):
-        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
-        if self.extra_cmd == "h265":
-            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
-        self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
-        t = Thread(target=self._update, args=())
-        t.daemon = True
-        t.start()
-        return self
+class OpenCVImageProcessor(ImageProcessingEntity):
+    """OpenCV Object API entity for identify."""
 
-    def _update(self):
-        while True:
-            grabbed = self._stream.grab()
-            if not grabbed:
-                _LOGGER.warning("Stream Interrupted, Retrying")
-                self._stream.release()
-                os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
-                if self.extra_cmd == "h265":
-                    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
-                self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
+    def __init__(self, hass, camera_entity, name, confidence, classifiers):
+        """Initialize the OpenCV entity."""
+        self.net = cv2.dnn.readNet(home+'yolov4.weights', home+'yolov4.cfg')
+        self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+        #self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+        self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
 
-    def read(self):
-        """ Retrieve most recent frame and decode"""
-        (read, frame) = self._stream.retrieve()
-        return frame
+        self.model = cv2.dnn_DetectionModel(self.net)
+        self.model.setInputParams(size=(608, 608), scale=1/256)
 
-class FFmpegCamera(Camera):
-    """An implementation of an FFmpeg camera."""
-
-    def __init__(self, hass, config, ffmpeg):
-        """Initialize a FFmpeg camera."""
         super().__init__()
-
-        self._manager = hass.data[DATA_FFMPEG]
-        self._name = config.get(CONF_NAME)
-        self._input = config.get(CONF_INPUT)
-        self._extra_arguments = config.get(CONF_EXTRA_ARGUMENTS)
-        self._ffmpeg = ffmpeg
-        self.client = Client(rtsp_server_uri = self._input, extra_cmd=self._extra_arguments)
+        self.hass = hass
+        self._camera = camera_entity
+        if name:
+            self._name = name
+        else:
+            self._name = f"OpenCV {split_entity_id(camera_entity)[1]}"
+        self._confidence = confidence
+        self._classifiers = classifiers.split(',')
+        self._matches = {}
+        self._total_matches = 0
+        self._last_image = None
 
     @property
-    def supported_features(self):
-        """Return supported features."""
-        return SUPPORT_STREAM
-
-    async def stream_source(self):
-        """Return the stream source."""
-        return self._input.split(" ")[-1]
-
-    async def async_camera_raw_image(self):
-        """Return a still image response from the camera."""
-        frame = self.client.read()
-        return frame
-
-    async def async_camera_image(self):
-        """Return a still image response from the camera."""
-        frame = self.client.read()
-        ret, image = cv2.imencode('.jpg', frame)
-        return image.tobytes()
-
-    async def handle_async_mjpeg_stream(self, request):
-        """Generate an HTTP MJPEG stream from the camera."""
-        return await super().handle_async_mjpeg_stream(request)
+    def camera_entity(self):
+        """Return camera entity id from process pictures."""
+        return self._camera
 
     @property
     def name(self):
-        """Return the name of this camera."""
+        """Return the name of the entity."""
         return self._name
+
+    @property
+    def state(self):
+        """Return the state of the entity."""
+        return self._total_matches
+
+    @property
+    def state_attributes(self):
+        """Return device specific state attributes."""
+        return {ATTR_MATCHES: self._matches, ATTR_TOTAL_MATCHES: self._total_matches}
+
+    def process_image(self, image):
+        """Process image."""
+
+        classes, scores, boxes = self.model.detect(image, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
+        matches = []
+        total_matches = 0
+        for (classid, score, box) in zip(classes, scores, boxes):
+            if score >= self._confidence:
+                if class_names[classid[0]] in self._classifiers:
+                    label = "%s : %.2f" % (class_names[classid[0]], score * 100)
+                    matches.append(label)
+
+        self._matches = matches
+        self._total_matches = len(matches)
