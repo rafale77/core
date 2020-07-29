@@ -1,5 +1,4 @@
 """Component that will process object detection with opencv."""
-import io
 import logging
 import numpy as np
 import cv2
