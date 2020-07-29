@@ -28,7 +28,6 @@ CONF_CLASSIFIER = "classifier"
 CONFIDENCE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.4
 
-class_names = []
 with open(home+'cococlasses.txt', "r") as f:
     class_names = [cname.strip() for cname in f.readlines()]
 
@@ -81,7 +80,7 @@ class OpenCVImageProcessor(ImageProcessingEntity):
             self._name = f"OpenCV {split_entity_id(camera_entity)[1]}"
         self._confidence = confidence
         self._classifiers = classifiers.split(',')
-        self._matches = {}
+        self._matches = []
         self._total_matches = 0
         self._last_image = None
 
@@ -109,13 +108,11 @@ class OpenCVImageProcessor(ImageProcessingEntity):
         """Process image."""
 
         classes, scores, boxes = self.model.detect(image, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
-        matches = []
-        total_matches = 0
+        self._matches = []
         for (classid, score, box) in zip(classes, scores, boxes):
             if score >= self._confidence:
                 if class_names[classid[0]] in self._classifiers:
                     label = "%s : %.2f" % (class_names[classid[0]], score * 100)
-                    matches.append(label)
+                    self._matches.append(label)
 
-        self._matches = matches
-        self._total_matches = len(matches)
+        self._total_matches = len(self._matches)
