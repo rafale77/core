@@ -212,8 +212,6 @@ class AmcrestCam(Camera):
     async def handle_async_mjpeg_stream(self, request):
         """Return an MJPEG stream."""
         # The snapshot implementation is handled by the parent class
-        if self._stream_source == "snapshot":
-            return await super().handle_async_mjpeg_stream(request)
 
         if not self.available:
             _LOGGER.warning(
@@ -222,35 +220,7 @@ class AmcrestCam(Camera):
                 self.name,
             )
             return None
-
-        if self._stream_source == "mjpeg":
-            # stream an MJPEG image stream directly from the camera
-            websession = async_get_clientsession(self.hass)
-            streaming_url = self._api.mjpeg_url(typeno=self._resolution)
-            stream_coro = websession.get(
-                streaming_url, auth=self._token, timeout=CAMERA_WEB_SESSION_TIMEOUT
-            )
-
-            return await async_aiohttp_proxy_web(self.hass, request, stream_coro)
-
-        # streaming via ffmpeg
-
-        streaming_url = self._rtsp_url
-        stream = CameraMjpeg(self._ffmpeg.binary, loop=self.hass.loop)
-        await stream.open_camera(streaming_url, extra_cmd=self._ffmpeg_arguments)
-
-        try:
-            stream_reader = await stream.get_reader()
-            return await async_aiohttp_proxy_stream(
-                self.hass,
-                request,
-                stream_reader,
-                self._ffmpeg.ffmpeg_stream_content_type,
-            )
-        finally:
-            await stream.close()
-
-    # Entity property overrides
+        return await super().handle_async_mjpeg_stream(request)
 
     @property
     def should_poll(self) -> bool:
