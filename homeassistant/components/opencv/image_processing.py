@@ -1,192 +1,111 @@
-"""Support for OpenCV classification on images."""
-from datetime import timedelta
+"""Support for Cameras with FFmpeg as decoder."""
+import asyncio
 import logging
+import os
 
-import numpy
-import requests
 import voluptuous as vol
+import cv2
+from threading import Thread
 
-from homeassistant.components.image_processing import (
-    CONF_ENTITY_ID,
-    CONF_NAME,
-    CONF_SOURCE,
-    PLATFORM_SCHEMA,
-    ImageProcessingEntity,
-)
-from homeassistant.core import split_entity_id
+from homeassistant.components.camera import PLATFORM_SCHEMA, SUPPORT_STREAM, Camera
+from homeassistant.const import CONF_NAME
 import homeassistant.helpers.config_validation as cv
 
-try:
-    # Verify that the OpenCV python package is pre-installed
-    import cv2
-
-    CV2_IMPORTED = True
-except ImportError:
-    CV2_IMPORTED = False
-
+from . import CONF_EXTRA_ARGUMENTS, CONF_INPUT, DATA_FFMPEG
 
 _LOGGER = logging.getLogger(__name__)
 
-ATTR_MATCHES = "matches"
-ATTR_TOTAL_MATCHES = "total_matches"
-
-CASCADE_URL = (
-    "https://raw.githubusercontent.com/opencv/opencv/master/data/"
-    "lbpcascades/lbpcascade_frontalface.xml"
-)
-
-CONF_CLASSIFIER = "classifier"
-CONF_FILE = "file"
-CONF_MIN_SIZE = "min_size"
-CONF_NEIGHBORS = "neighbors"
-CONF_SCALE = "scale"
-
-DEFAULT_CLASSIFIER_PATH = "lbp_frontalface.xml"
-DEFAULT_MIN_SIZE = (30, 30)
-DEFAULT_NEIGHBORS = 4
-DEFAULT_SCALE = 1.1
-DEFAULT_TIMEOUT = 10
-
-SCAN_INTERVAL = timedelta(seconds=2)
+DEFAULT_NAME = "FFmpeg"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
-        vol.Optional(CONF_CLASSIFIER): {
-            cv.string: vol.Any(
-                cv.isfile,
-                vol.Schema(
-                    {
-                        vol.Required(CONF_FILE): cv.isfile,
-                        vol.Optional(CONF_SCALE, DEFAULT_SCALE): float,
-                        vol.Optional(
-                            CONF_NEIGHBORS, DEFAULT_NEIGHBORS
-                        ): cv.positive_int,
-                        vol.Optional(CONF_MIN_SIZE, DEFAULT_MIN_SIZE): vol.Schema(
-                            vol.All(vol.ExactSequence([int, int]), vol.Coerce(tuple))
-                        ),
-                    }
-                ),
-            )
-        }
+        vol.Required(CONF_INPUT): cv.string,
+        vol.Optional(CONF_EXTRA_ARGUMENTS): cv.string,
+        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     }
 )
 
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up a FFmpeg camera."""
+    async_add_entities([FFmpegCamera(hass, config, hass.data[DATA_FFMPEG])])
 
-def _create_processor_from_config(hass, camera_entity, config):
-    """Create an OpenCV processor from configuration."""
-    classifier_config = config.get(CONF_CLASSIFIER)
-    name = f"{config[CONF_NAME]} {split_entity_id(camera_entity)[1].replace('_', ' ')}"
+class Client:
+    """ Maintain live RTSP feed without buffering. """
+    _stream = None
 
-    processor = OpenCVImageProcessor(hass, camera_entity, name, classifier_config)
+    def __init__(self, rtsp_server_uri, extra_cmd):
+        """
+            rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
+        """
+        self.rtsp_server_uri = rtsp_server_uri
+        self.extra_cmd = extra_cmd
+        self.open()
 
-    return processor
+    def open(self):
+        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
+        if self.extra_cmd == "h265":
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
+        self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
+        t = Thread(target=self._update, args=())
+        t.daemon = True
+        t.start()
+        return self
 
+    def _update(self):
+        while True:
+            grabbed = self._stream.grab()
+            if not grabbed:
+                _LOGGER.warning("Stream Interrupted, Retrying")
+                self._stream.release()
+                os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
+                if self.extra_cmd == "h265":
+                    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
+                self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
 
-def _get_default_classifier(dest_path):
-    """Download the default OpenCV classifier."""
-    _LOGGER.info("Downloading default classifier")
-    req = requests.get(CASCADE_URL, stream=True)
-    with open(dest_path, "wb") as fil:
-        for chunk in req.iter_content(chunk_size=1024):
-            if chunk:  # filter out keep-alive new chunks
-                fil.write(chunk)
+    def read(self):
+        """ Retrieve most recent frame and decode"""
+        (read, frame) = self._stream.retrieve()
+        return frame
 
+class FFmpegCamera(Camera):
+    """An implementation of an FFmpeg camera."""
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the OpenCV image processing platform."""
-    if not CV2_IMPORTED:
-        _LOGGER.error(
-            "No OpenCV library found! Install or compile for your system "
-            "following instructions here: http://opencv.org/releases.html"
-        )
-        return
+    def __init__(self, hass, config, ffmpeg):
+        """Initialize a FFmpeg camera."""
+        super().__init__()
 
-    entities = []
-    if CONF_CLASSIFIER not in config:
-        dest_path = hass.config.path(DEFAULT_CLASSIFIER_PATH)
-        _get_default_classifier(dest_path)
-        config[CONF_CLASSIFIER] = {"Face": dest_path}
-
-    for camera in config[CONF_SOURCE]:
-        entities.append(
-            OpenCVImageProcessor(
-                hass,
-                camera[CONF_ENTITY_ID],
-                camera.get(CONF_NAME),
-                config[CONF_CLASSIFIER],
-            )
-        )
-
-    add_entities(entities)
-
-
-class OpenCVImageProcessor(ImageProcessingEntity):
-    """Representation of an OpenCV image processor."""
-
-    def __init__(self, hass, camera_entity, name, classifiers):
-        """Initialize the OpenCV entity."""
-        self.hass = hass
-        self._camera_entity = camera_entity
-        if name:
-            self._name = name
-        else:
-            self._name = f"OpenCV {split_entity_id(camera_entity)[1]}"
-        self._classifiers = classifiers
-        self._matches = {}
-        self._total_matches = 0
-        self._last_image = None
+        self._manager = hass.data[DATA_FFMPEG]
+        self._name = config.get(CONF_NAME)
+        self._input = config.get(CONF_INPUT)
+        self._extra_arguments = config.get(CONF_EXTRA_ARGUMENTS)
+        self._ffmpeg = ffmpeg
+        self.client = Client(rtsp_server_uri = self._input, extra_cmd=self._extra_arguments)
 
     @property
-    def camera_entity(self):
-        """Return camera entity id from process pictures."""
-        return self._camera_entity
+    def supported_features(self):
+        """Return supported features."""
+        return SUPPORT_STREAM
+
+    async def stream_source(self):
+        """Return the stream source."""
+        return self._input.split(" ")[-1]
+
+    async def async_camera_raw_image(self):
+        """Return a still image response from the camera."""
+        frame = self.client.read()
+        return frame
+
+    async def async_camera_image(self):
+        """Return a still image response from the camera."""
+        frame = self.client.read()
+        ret, image = cv2.imencode('.jpg', frame)
+        return image.tobytes()
+
+    async def handle_async_mjpeg_stream(self, request):
+        """Generate an HTTP MJPEG stream from the camera."""
+        return await super().handle_async_mjpeg_stream(request)
 
     @property
     def name(self):
-        """Return the name of the image processor."""
+        """Return the name of this camera."""
         return self._name
-
-    @property
-    def state(self):
-        """Return the state of the entity."""
-        return self._total_matches
-
-    @property
-    def state_attributes(self):
-        """Return device specific state attributes."""
-        return {ATTR_MATCHES: self._matches, ATTR_TOTAL_MATCHES: self._total_matches}
-
-    def process_image(self, image):
-        """Process the image."""
-        cv_image = cv2.imdecode(numpy.asarray(bytearray(image)), cv2.IMREAD_UNCHANGED)
-
-        matches = {}
-        total_matches = 0
-
-        for name, classifier in self._classifiers.items():
-            scale = DEFAULT_SCALE
-            neighbors = DEFAULT_NEIGHBORS
-            min_size = DEFAULT_MIN_SIZE
-            if isinstance(classifier, dict):
-                path = classifier[CONF_FILE]
-                scale = classifier.get(CONF_SCALE, scale)
-                neighbors = classifier.get(CONF_NEIGHBORS, neighbors)
-                min_size = classifier.get(CONF_MIN_SIZE, min_size)
-            else:
-                path = classifier
-
-            cascade = cv2.CascadeClassifier(path)
-
-            detections = cascade.detectMultiScale(
-                cv_image, scaleFactor=scale, minNeighbors=neighbors, minSize=min_size
-            )
-            regions = []
-            # pylint: disable=invalid-name
-            for (x, y, w, h) in detections:
-                regions.append((int(x), int(y), int(w), int(h)))
-                total_matches += 1
-
-            matches[name] = regions
-
-        self._matches = matches
-        self._total_matches = total_matches
