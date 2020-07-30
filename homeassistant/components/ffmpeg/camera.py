@@ -27,7 +27,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up a FFmpeg camera."""
-    async_add_entities([FFmpegCamera(hass, config, hass.data[DATA_FFMPEG])])
+    async_add_entities([FFmpegCamera(hass, config)])
 
 class Client:
     """ Maintain live RTSP feed without buffering. """
@@ -40,16 +40,15 @@ class Client:
         self.rtsp_server_uri = rtsp_server_uri
         self.extra_cmd = extra_cmd
         self.open()
+        t = Thread(target=self._update, args=())
+        t.daemon = True
+        t.start()
 
     def open(self):
         os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
         if self.extra_cmd == "h265":
             os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
         self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
-        t = Thread(target=self._update, args=())
-        t.daemon = True
-        t.start()
-        return self
 
     def _update(self):
         while True:
@@ -57,10 +56,7 @@ class Client:
             if not grabbed:
                 _LOGGER.warning("Stream Interrupted, Retrying")
                 self._stream.release()
-                os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
-                if self.extra_cmd == "h265":
-                    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
-                self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
+                self.open()
 
     def read(self):
         """ Retrieve most recent frame and decode"""
@@ -70,7 +66,7 @@ class Client:
 class FFmpegCamera(Camera):
     """An implementation of an FFmpeg camera."""
 
-    def __init__(self, hass, config, ffmpeg):
+    def __init__(self, hass, config):
         """Initialize a FFmpeg camera."""
         super().__init__()
 
@@ -78,7 +74,6 @@ class FFmpegCamera(Camera):
         self._name = config.get(CONF_NAME)
         self._input = config.get(CONF_INPUT)
         self._extra_arguments = config.get(CONF_EXTRA_ARGUMENTS)
-        self._ffmpeg = ffmpeg
         self.client = Client(rtsp_server_uri = self._input, extra_cmd=self._extra_arguments)
 
     @property
