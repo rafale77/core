@@ -122,7 +122,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     face_bounding_boxes = self.locate(face)
             # If training image contains exactly one face
                     if len(face_bounding_boxes) == 1:
-                        face = cv2.cvtColor(np.array(face),cv2.COLOR_BGR2RGB)
+                        face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                         face_enc = face_recognition.face_encodings(face, face_bounding_boxes, model=self.fmodel)[0]
                 # Add face encoding for current image
                 # with corresponding label (name) to the training data
@@ -152,7 +152,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         found = []
         unknowns =[]
         if face_locations:
-            im = cv2.cvtColor(np.array(image),cv2.COLOR_BGR2RGB)
+            im = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
             unknowns = face_recognition.face_encodings(im, face_locations, model=self.fmodel)
             for unknown_face in unknowns:
                 name = self.clf.predict([unknown_face])
