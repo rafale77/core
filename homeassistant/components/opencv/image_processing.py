@@ -1,6 +1,5 @@
 """Component that will process object detection with opencv."""
 import logging
-import numpy as np
 import cv2
 # pylint: disable=import-error
 
