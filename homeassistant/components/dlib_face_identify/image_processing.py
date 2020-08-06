@@ -5,7 +5,6 @@ import dlib
 import cv2
 
 # pylint: disable=import-error
-import face_recognition
 import voluptuous as vol
 from sklearn import svm
 from joblib import dump, load
@@ -61,10 +60,13 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         super().__init__()
 
         self.dnn_face_detector = cv2.dnn.readNetFromCaffe(home+"model/deploy.prototxt.txt", home+"model/res10_300x300_ssd_iter_140000.caffemodel")
+        self.pose_predictor_68_point = dlib.shape_predictor(home+"model/shape_predictor_68_face_landmarks.dat")
+        self.pose_predictor_5_point = dlib.shape_predictor(home+"model/shape_predictor_5_face_landmarks.dat")
+        self.face_encoder = dlib.face_recognition_model_v1(home+"model/dlib_face_recognition_resnet_model_v1.dat")
 
         #switch dnn to GPU
         self.dnn_face_detector.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-        self.dnn_face_detector.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+        self.dnn_face_detector.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
 
         self._camera = camera_entity
         self.fmodel = "large"
@@ -76,6 +78,29 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
         self.train_faces()
 
+    def _raw_face_landmarks(self, face_image, face_locations=None, model="large"):
+
+        face_locations = [_css_to_rect(face_location) for face_location in face_locations]
+        if model == "small":
+            pose_predictor = self.pose_predictor_5_point
+        else:
+            pose_predictor = self.pose_predictor_68_point
+        return [pose_predictor(face_image, face_location) for face_location in face_locations]
+
+
+    def face_encodings(self, face_image, known_face_locations=None, num_jitters=1, model="large"):
+        """
+        Given an image, return the 128-dimension face encoding for each face in the image.
+
+        :param face_image: The image that contains one or more faces
+        :param known_face_locations: Optional - the bounding boxes of each face if you already know them.
+        :param num_jitters: How many times to re-sample the face when calculating encoding. Higher is more accurate, but slower (i.e. 100 is 100x slower)
+        :param model: Optional - which model to use. "large" (default) or "small" which only returns 5 points but is faster.
+        :return: A list of 128-dimensional face encodings (one for each face in the image)
+        """
+        raw_landmarks = self._raw_face_landmarks(face_image, known_face_locations, model)
+        return [np.array(self.face_encoder.compute_face_descriptor(face_image, raw_landmark_set, num_jitters)) for raw_landmark_set in raw_landmarks]
+
     def locate(self, image):
         def _rect_to_css(rect):
             return rect.top(), rect.right(), rect.bottom(), rect.left()
@@ -85,7 +110,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
         (h, w) = image.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0,
-            (300, 300), (104.0, 177.0, 123.0), swapRB=False, crop=False)
+            (300, 300), (103.93, 116.77, 123.68), swapRB=False, crop=False)
             # pass the blob through the network and obtain the detections and
             # predictions
         self.dnn_face_detector.setInput(blob)
@@ -94,7 +119,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         dlibrect = []
         for i in range(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
-            if confidence > 0.5:
+            if confidence > 0.8:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
                 face = dlib.rectangle(startX, startY, endX, endY)
@@ -121,9 +146,9 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     face = cv2.imread(dir + person + "/" + person_img)
                     face_bounding_boxes = self.locate(face)
             # If training image contains exactly one face
-                    if len(face_bounding_boxes) == 1:
+                    if len(face_bounding_boxes) >= 1:
                         face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                        face_enc = face_recognition.face_encodings(face, face_bounding_boxes, model=self.fmodel)[0]
+                        face_enc = self.face_encodings(face, face_bounding_boxes, 100, model=self.fmodel)[0]
                 # Add face encoding for current image
                 # with corresponding label (name) to the training data
                         faces.append(face_enc)
@@ -153,7 +178,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         unknowns =[]
         if face_locations:
             im = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-            unknowns = face_recognition.face_encodings(im, face_locations, model=self.fmodel)
+            unknowns = self.face_encodings(im, face_locations, 10, model=self.fmodel)
             for unknown_face in unknowns:
                 name = self.clf.predict([unknown_face])
                 name = np.array2string(name)
