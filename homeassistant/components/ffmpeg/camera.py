@@ -66,7 +66,7 @@ class Client:
 class FFmpegCamera(Camera):
     """An implementation of an FFmpeg camera."""
 
-    def __init__(self, hass, config, ffmpeg):
+    def __init__(self, hass, config):
         """Initialize a FFmpeg camera."""
         super().__init__()
 
