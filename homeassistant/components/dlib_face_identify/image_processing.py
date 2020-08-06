@@ -12,11 +12,9 @@ from pathlib import Path
 import os
 
 from homeassistant.components.image_processing import (
-    CONF_CONFIDENCE,
     CONF_ENTITY_ID,
     CONF_NAME,
     CONF_SOURCE,
-    PLATFORM_SCHEMA,
     ImageProcessingFaceEntity,
 )
 from homeassistant.core import split_entity_id
@@ -26,14 +24,6 @@ _LOGGER = logging.getLogger(__name__)
 home = str(Path.home())+"/.homeassistant/"
 
 ATTR_NAME = "name"
-CONF_FACES = "faces"
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_FACES): {cv.string: cv.isfile},
-        vol.Optional(CONF_CONFIDENCE, default=0.6): vol.Coerce(float),
-    }
-)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Dlib Face detection platform."""
@@ -42,9 +32,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         entities.append(
             DlibFaceIdentifyEntity(
                 camera[CONF_ENTITY_ID],
-                config[CONF_FACES],
                 camera.get(CONF_NAME),
-                config[CONF_CONFIDENCE],
             )
         )
 
@@ -54,7 +42,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     """Dlib Face API entity for identify."""
 
-    def __init__(self, camera_entity, faces, name, model = "dnn"):
+    def __init__(self, camera_entity, name, model = "dnn"):
         """Initialize Dlib face identify entry."""
 
         super().__init__()
@@ -80,7 +68,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def _raw_face_landmarks(self, face_image, face_locations=None, model="large"):
 
-        face_locations = [_css_to_rect(face_location) for face_location in face_locations]
+        face_locations = [dlib.rectangle(face_location[3], face_location[0], face_location[1], face_location[2]) for face_location in face_locations]
         if model == "small":
             pose_predictor = self.pose_predictor_5_point
         else:
