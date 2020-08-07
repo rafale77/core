@@ -90,11 +90,6 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         return [np.array(self.face_encoder.compute_face_descriptor(face_image, raw_landmark_set, num_jitters)) for raw_landmark_set in raw_landmarks]
 
     def locate(self, image, conf):
-        def _rect_to_css(rect):
-            return rect.top(), rect.right(), rect.bottom(), rect.left()
-
-        def _trim_css_to_bounds(css, image_shape):
-            return max(css[0], 0), min(css[1], image_shape[1]), min(css[2], image_shape[0]), max(css[3], 0)
 
         (h, w) = image.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0,
@@ -112,7 +107,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 (startX, startY, endX, endY) = box.astype("int")
                 face = dlib.rectangle(startX, startY, endX, endY)
                 dlibrect.append(face)
-        return [_trim_css_to_bounds(_rect_to_css(face), image.shape) for face in dlibrect]
+        return [(max(face.top(), 0), min(face.right(), image.shape[1]), min(face.bottom(), image.shape[0]), max(face.left(), 0)) for face in dlibrect]
 
     def train_faces(self):
 
@@ -161,7 +156,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def process_image(self, image):
         """Process image."""
 
-        face_locations = self.locate(image, 0.6)
+        face_locations = self.locate(image, 0.7)
         found = []
         unknowns =[]
         if face_locations:
