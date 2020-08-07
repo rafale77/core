@@ -35,7 +35,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 camera.get(CONF_NAME),
             )
         )
-
     add_entities(entities)
 
 
@@ -94,11 +93,8 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         (h, w) = image.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0,
             (300, 300), (103.93, 116.77, 123.68), swapRB=False, crop=False)
-            # pass the blob through the network and obtain the detections and
-            # predictions
         self.dnn_face_detector.setInput(blob)
         detections = self.dnn_face_detector.forward()
-
         dlibrect = []
         for i in range(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
@@ -123,17 +119,12 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             for person in train_dir:
                 pix = os.listdir(dir + person)
 
-            # Loop through each training image for the current person
                 for person_img in pix:
-            # Get the face encodings for the face in each image file
                     face = cv2.imread(dir + person + "/" + person_img)
                     face_bounding_boxes = self.locate(face, 0.9)
-            # If training image contains exactly one face
                     if len(face_bounding_boxes) == 1:
                         face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                         face_enc = self.face_encodings(face, face_bounding_boxes, 100, model=self.fmodel)[0]
-                # Add face encoding for current image
-                # with corresponding label (name) to the training data
                         faces.append(face_enc)
                         names.append(person)
                     else:
