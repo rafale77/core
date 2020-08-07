@@ -89,7 +89,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         raw_landmarks = self._raw_face_landmarks(face_image, known_face_locations, model)
         return [np.array(self.face_encoder.compute_face_descriptor(face_image, raw_landmark_set, num_jitters)) for raw_landmark_set in raw_landmarks]
 
-    def locate(self, image):
+    def locate(self, image, conf):
         def _rect_to_css(rect):
             return rect.top(), rect.right(), rect.bottom(), rect.left()
 
@@ -107,7 +107,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         dlibrect = []
         for i in range(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
-            if confidence > 0.8:
+            if confidence > conf:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
                 face = dlib.rectangle(startX, startY, endX, endY)
@@ -132,7 +132,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 for person_img in pix:
             # Get the face encodings for the face in each image file
                     face = cv2.imread(dir + person + "/" + person_img)
-                    face_bounding_boxes = self.locate(face)
+                    face_bounding_boxes = self.locate(face, 0.9)
             # If training image contains exactly one face
                     if len(face_bounding_boxes) == 1:
                         face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
@@ -161,7 +161,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def process_image(self, image):
         """Process image."""
 
-        face_locations = self.locate(image)
+        face_locations = self.locate(image, 0.6)
         found = []
         unknowns =[]
         if face_locations:
