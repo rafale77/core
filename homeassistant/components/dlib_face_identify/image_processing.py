@@ -35,7 +35,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 camera.get(CONF_NAME),
             )
         )
-
     add_entities(entities)
 
 
@@ -89,30 +88,22 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         raw_landmarks = self._raw_face_landmarks(face_image, known_face_locations, model)
         return [np.array(self.face_encoder.compute_face_descriptor(face_image, raw_landmark_set, num_jitters)) for raw_landmark_set in raw_landmarks]
 
-    def locate(self, image):
-        def _rect_to_css(rect):
-            return rect.top(), rect.right(), rect.bottom(), rect.left()
-
-        def _trim_css_to_bounds(css, image_shape):
-            return max(css[0], 0), min(css[1], image_shape[1]), min(css[2], image_shape[0]), max(css[3], 0)
+    def locate(self, image, conf):
 
         (h, w) = image.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0,
             (300, 300), (103.93, 116.77, 123.68), swapRB=False, crop=False)
-            # pass the blob through the network and obtain the detections and
-            # predictions
         self.dnn_face_detector.setInput(blob)
         detections = self.dnn_face_detector.forward()
-
         dlibrect = []
         for i in range(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
-            if confidence > 0.8:
+            if confidence > conf:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
                 face = dlib.rectangle(startX, startY, endX, endY)
                 dlibrect.append(face)
-        return [_trim_css_to_bounds(_rect_to_css(face), image.shape) for face in dlibrect]
+        return [(max(face.top(), 0), min(face.right(), image.shape[1]), min(face.bottom(), image.shape[0]), max(face.left(), 0)) for face in dlibrect]
 
     def train_faces(self):
 
@@ -128,17 +119,12 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             for person in train_dir:
                 pix = os.listdir(dir + person)
 
-            # Loop through each training image for the current person
                 for person_img in pix:
-            # Get the face encodings for the face in each image file
                     face = cv2.imread(dir + person + "/" + person_img)
-                    face_bounding_boxes = self.locate(face)
-            # If training image contains exactly one face
-                    if len(face_bounding_boxes) >= 1:
+                    face_bounding_boxes = self.locate(face, 0.9)
+                    if len(face_bounding_boxes) == 1:
                         face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                         face_enc = self.face_encodings(face, face_bounding_boxes, 100, model=self.fmodel)[0]
-                # Add face encoding for current image
-                # with corresponding label (name) to the training data
                         faces.append(face_enc)
                         names.append(person)
                     else:
@@ -161,7 +147,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def process_image(self, image):
         """Process image."""
 
-        face_locations = self.locate(image)
+        face_locations = self.locate(image, 0.7)
         found = []
         unknowns =[]
         if face_locations:
