@@ -505,6 +505,9 @@ dovado==0.4.1
 # homeassistant.components.dsmr
 dsmr_parser==0.18
 
+# homeassistant.components.dwd_weather_warnings
+dwdwfsapi==1.0.2
+
 # homeassistant.components.dweet
 dweepy==0.3.0
 
@@ -739,7 +742,7 @@ hole==0.5.1
 holidays==0.10.3
 
 # homeassistant.components.frontend
-home-assistant-frontend==20200807.1
+home-assistant-frontend==20200811.0
 
 # homeassistant.components.zwave
 homeassistant-pyozw==0.1.10
@@ -830,7 +833,7 @@ konnected==1.1.0
 lakeside==0.12
 
 # homeassistant.components.dyson
-libpurecool==0.6.1
+libpurecool==0.6.3
 
 # homeassistant.components.foscam
 libpyfoscam==1.0
@@ -1115,9 +1118,6 @@ praw==6.5.1
 
 # homeassistant.components.islamic_prayer_times
 prayer_times_calculator==0.0.3
-
-# homeassistant.components.prezzibenzina
-prezzibenzina-py==1.1.4
 
 # homeassistant.components.proliphix
 proliphix==0.4.1
@@ -1635,7 +1635,7 @@ pysmappee==0.2.9
 pysmartapp==0.3.2
 
 # homeassistant.components.smartthings
-pysmartthings==0.7.2
+pysmartthings==0.7.3
 
 # homeassistant.components.smarty
 pysmarty==0.8
@@ -1867,7 +1867,7 @@ qnapstats==0.3.0
 quantum-gateway==0.0.5
 
 # homeassistant.components.rachio
-rachiopy==0.1.3
+rachiopy==0.1.4
 
 # homeassistant.components.radiotherm
 radiotherm==2.0.0
@@ -2281,7 +2281,7 @@ zengge==0.2
 zeroconf==0.28.0
 
 # homeassistant.components.zha
-zha-quirks==0.0.42
+zha-quirks==0.0.43
 
 # homeassistant.components.zhong_hong
 zhong_hong_hvac==1.0.9
