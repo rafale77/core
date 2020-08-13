@@ -143,7 +143,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 for person_img in pix:
                     face = cv2.imread(dir + person + "/" + person_img)
                     face_bounding_boxes = self.locate(face, 0.9)
-                    if len(face_bounding_boxes) >= 1:
+                    if len(face_bounding_boxes) == 1:
                         face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                         face_enc = self.face_encodings(face, face_bounding_boxes, 100, model=self.fmodel)[0]
                         faces.append(face_enc)
