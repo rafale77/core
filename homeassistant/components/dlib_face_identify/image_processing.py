@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import dlib
 import cv2
+from .Retinaface import FaceDetector
 
 # pylint: disable=import-error
 import voluptuous as vol
@@ -15,7 +16,6 @@ from homeassistant.components.image_processing import (
     CONF_ENTITY_ID,
     CONF_NAME,
     CONF_SOURCE,
-    PLATFORM_SCHEMA,
     ImageProcessingFaceEntity,
 )
 from homeassistant.core import split_entity_id
@@ -25,13 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 home = str(Path.home())+"/.homeassistant/"
 
 ATTR_NAME = "name"
-CONF_MODEL = "dnn"
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Optional(CONF_MODEL, default="dnn"): cv.string,
-    }
-)
+CONF_MODEL = "retina"
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Dlib Face detection platform."""
@@ -41,7 +35,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             DlibFaceIdentifyEntity(
                 camera[CONF_ENTITY_ID],
                 camera.get(CONF_NAME),
-                config[CONF_MODEL],
             )
         )
     add_entities(entities)
@@ -50,28 +43,19 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     """Dlib Face API entity for identify."""
 
-    def __init__(self, camera_entity, name, model = "dnn"):
+    def __init__(self, camera_entity, name):
         """Initialize Dlib face identify entry."""
 
         super().__init__()
 
         self.face_encoder = dlib.face_recognition_model_v1(home+"model/dlib_face_recognition_resnet_model_v1.dat")
-        self.model = model
-
-        if model == "dnn":
-            self.face_detector = cv2.dnn.readNetFromCaffe(home+"model/deploy.prototxt.txt", home+"model/res10_300x300_ssd_iter_140000.caffemodel")
-            if dlib.DLIB_USE_CUDA:
-                self.face_detector.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-                self.face_detector.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
-                self.fmodel = "large"
-            else:
-                self.fmodel = "small"
-        else:
-            self.face_detector = dlib.cnn_face_detection_model_v1(home+"model/mmod_human_face_detector.dat")
-            self.fmodel = "large"
-
+        self.fmodel = "large"
         self._camera = camera_entity
-
+        if dlib.DLIB_USE_CUDA:
+            self.face_detector = FaceDetector(weight_path=home+'model/Resnet50_Final.pth', device='cuda', face_size=(224, 224))
+        else:
+            self.face_detector = FaceDetector(weight_path=home+'model/Resnet50_Final.pth', device='cpu', face_size=(112, 112))
+            self.fmodel = "small"
 
         if name:
             self._name = name
@@ -103,26 +87,17 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         raw_landmarks = self._raw_face_landmarks(face_image, known_face_locations, model)
         return [np.array(self.face_encoder.compute_face_descriptor(face_image, raw_landmark_set, num_jitters)) for raw_landmark_set in raw_landmarks]
 
-    def locate(self, image, conf):
+    def locate(self, image, conf, mode="inf"):
+
         dlibrect = []
         (h, w) = image.shape[:2]
-        if self.model == "dnn":
-            blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0,
-                (300, 300), (103.93, 116.77, 123.68), swapRB=False, crop=False)
-            self.face_detector.setInput(blob)
-            detections = self.face_detector.forward()
-            for i in range(0, detections.shape[2]):
-                confidence = detections[0, 0, i, 2]
-                if confidence > conf:
-                    box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                    (startX, startY, endX, endY) = box.astype("int")
-                    face = dlib.rectangle(startX, startY, endX, endY)
-                    dlibrect.append(face)
-        else:
-            image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-            detections = self.face_detector(image,1)
-            for face in detections:
-                dlibrect.append(face.rect)
+        if mode == "inf":
+            image = cv2.resize(image, (int(h/2), int(w/2)))
+        boxes, scores, landmarks = self.face_detector.detect_faces(image)
+        if len(boxes) > 0:
+            for box in boxes:
+                face = dlib.rectangle(int(box[0]), int(box[1]), int(box[2]), int(box[3]))
+                dlibrect.append(face)
 
         return [(max(face.top(), 0), min(face.right(), w), min(face.bottom(), h), max(face.left(), 0)) for face in dlibrect]
 
@@ -141,11 +116,11 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 pix = os.listdir(dir + person)
 
                 for person_img in pix:
-                    face = cv2.imread(dir + person + "/" + person_img)
-                    face_bounding_boxes = self.locate(face, 0.9)
-                    if len(face_bounding_boxes) == 1:
-                        face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                        face_enc = self.face_encodings(face, face_bounding_boxes, 100, model=self.fmodel)[0]
+                    pic = cv2.imread(dir + person + "/" + person_img)
+                    boxes = self.locate(pic, 0.9, "retina", "train")
+                    if len(boxes) == 1:
+                        face = cv2.cvtColor(pic, cv2.COLOR_BGR2RGB)
+                        face_enc = self.face_encodings(face, boxes, 100, model=self.fmodel)[0]
                         faces.append(face_enc)
                         names.append(person)
                     else:
