@@ -52,11 +52,11 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         self.fmodel = "large"
         self._camera = camera_entity
         if dlib.DLIB_USE_CUDA:
-            self.face_detector = FaceDetector(weight_path=home+'model/Resnet50_Final.pth', device='cuda', face_size=(224, 224))
+            device = 'cuda'
         else:
-            self.face_detector = FaceDetector(weight_path=home+'model/Resnet50_Final.pth', device='cpu', face_size=(112, 112))
+            device = 'cpu'
             self.fmodel = "small"
-
+        self.face_detector = FaceDetector(weight_path=home+'model/Resnet50_Final.pth', device=device)
         if name:
             self._name = name
         else:
@@ -87,12 +87,11 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         raw_landmarks = self._raw_face_landmarks(face_image, known_face_locations, model)
         return [np.array(self.face_encoder.compute_face_descriptor(face_image, raw_landmark_set, num_jitters)) for raw_landmark_set in raw_landmarks]
 
-    def locate(self, image, conf, mode="inf"):
+    def locate(self, image):
 
         dlibrect = []
+        ratio = 1
         (h, w) = image.shape[:2]
-        if mode == "inf":
-            image = cv2.resize(image, (int(h/2), int(w/2)))
         boxes, scores, landmarks = self.face_detector.detect_faces(image)
         if len(boxes) > 0:
             for box in boxes:
@@ -117,7 +116,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
                 for person_img in pix:
                     pic = cv2.imread(dir + person + "/" + person_img)
-                    boxes = self.locate(pic, 0.9, "retina", "train")
+                    boxes = self.locate(pic)
                     if len(boxes) == 1:
                         face = cv2.cvtColor(pic, cv2.COLOR_BGR2RGB)
                         face_enc = self.face_encodings(face, boxes, 100, model=self.fmodel)[0]
@@ -143,7 +142,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def process_image(self, image):
         """Process image."""
 
-        face_locations = self.locate(image, 0.7)
+        face_locations = self.locate(image)
         found = []
         unknowns =[]
         if face_locations:
