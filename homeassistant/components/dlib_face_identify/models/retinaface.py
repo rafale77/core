@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models._utils as _utils
 
-from .net import FPN as FPN
-from .net import SSH as SSH
+from . net import FPN as FPN
+from . net import SSH as SSH
 
 
 class ClassHead(nn.Module):
@@ -45,13 +45,11 @@ class LandmarkHead(nn.Module):
 
 
 class RetinaFace(nn.Module):
-    def __init__(self, cfg=None, phase='train'):
+    def __init__(self, cfg=None):
         """
         :param cfg:  Network related settings.
-        :param phase: train or test.
         """
         super(RetinaFace, self).__init__()
-        self.phase = phase
 
         import torchvision.models as models
         backbone = models.resnet50(pretrained=cfg['pretrain'])
@@ -106,9 +104,5 @@ class RetinaFace(nn.Module):
         bbox_regressions = torch.cat([self.BboxHead[i](feature) for i, feature in enumerate(features)], dim=1)
         classifications = torch.cat([self.ClassHead[i](feature) for i, feature in enumerate(features)], dim=1)
         ldm_regressions = torch.cat([self.LandmarkHead[i](feature) for i, feature in enumerate(features)], dim=1)
-
-        if self.phase == 'train':
-            output = (bbox_regressions, classifications, ldm_regressions)
-        else:
-            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
+        output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
         return output
