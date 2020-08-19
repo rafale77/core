@@ -2,6 +2,9 @@ import torch
 import cv2
 import numpy as np
 from skimage import transform
+from collections import OrderedDict
+#from torch2trt import torch2trt
+#from torch2trt import TRTModule
 
 from .utils.alignment import get_reference_facial_points, FaceWarpException
 from .utils.box_utils import decode, decode_landmark, prior_box, nms
@@ -15,13 +18,13 @@ cfg = {
     'clip': False,
     'loc_weight': 2.0,
     'gpu_train': True,
-    'batch_size': 24,
+    'batch_size': 5,
     'ngpu': 4,
     'epoch': 100,
     'decay1': 70,
     'decay2': 90,
     'image_size': 840,
-    'pretrain': False,
+    'pretrain': True,
     'return_layers': {'layer2': 1, 'layer3': 2, 'layer4': 3},
     'in_channel': 256,
     'out_channel': 256
@@ -41,16 +44,17 @@ class FaceDetector:
             face_padding: padding for bounding boxes
         """
         # setting for model
-        model = RetinaFace(cfg, phase='test')
+#        model = TRTModule()
+#        model.load_state_dict(torch.load('/home/anhman/.homeassistant/model/retina_trt.pth'))
+        model = RetinaFace(cfg)
         state_dict = torch.load(weight_path)
-        from collections import OrderedDict
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             name = k[7:] # remove `module.`
             new_state_dict[name] = v
         model.load_state_dict(new_state_dict)
         model.to(device).eval()
-#        model.half()
+        #model.half()
         self.model = model
         self.device = device
         self.cfg = cfg
@@ -63,7 +67,7 @@ class FaceDetector:
         self.trans = transform.SimilarityTransform()
         self.out_size = face_size
         self.ref_pts = get_reference_facial_points(output_size=face_size)
-        print('from FaceDetector: weights loaded')
+        #print('from FaceDetector: weights loaded')
         return
 
     def preprocessor(self, img_raw):
