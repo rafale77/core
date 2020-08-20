@@ -45,7 +45,7 @@ def get_config():
     conf.batch_size = 5  # irse net depth 50
     conf.facebank_path = Path(home+'recogface/')
     conf.threshold = 1.5
-    conf.face_limit = 10        # when inference, at maximum detect 10 faces in one image, my laptop is slow
+    conf.face_limit = 10        # when inference, at maximum detect 10 faces in one image
     return conf
 
 
@@ -69,11 +69,11 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         """Initialize Dlib face identify entry."""
 
         super().__init__()
-        self.model = "arcface"
+        self.model = "arc"
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.face_detector = FaceDetector(weight_path=home+'model/Resnet50_Final.pth', device=self.device)
         self._camera = camera_entity
-        if self.model == "arcface":
+        if self.model == "arc":
             self.conf = get_config()
             self.arcmodel = Backbone(self.conf.net_depth, self.conf.drop_ratio, self.conf.net_mode).to(self.device)
             try:
@@ -90,6 +90,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             self._name = f"Dlib Face {split_entity_id(camera_entity)[1]}"
 
         self.train_faces()
+
 
     def _raw_face_landmarks(self, face_image, face_locations, model="large"):
 
@@ -141,82 +142,84 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def train_faces(self):
 
-            try:
-                if self.model == "arcface":
-                    self.targets = torch.load(self.conf.facebank_path/'facebank.pth')
-                    self.names = np.load(self.conf.facebank_path/'names.npy')
-                else:
-                    self.clf = load(home+'model.joblib')
-                _LOGGER.warning("Faces Loaded")
-            except:
-                _LOGGER.warning("Model not trained, retraining...")
-                faces = []
-                names = []
-                faces_embs = torch.empty(0).to(self.device)
-                dir = home+"recogface/faces/"
-                train_dir = os.listdir(dir)
-
-                for person in train_dir:
-                    pix = os.listdir(dir + person)
-                    embs = []
-                    for person_img in pix:
-                        pic = cv2.imread(dir + person + "/" + person_img)
-                        if self.model == "arcface":
-                            face = self.face_detector.detect_align(pic)[0]
+        try:
+            if self.model == "arc":
+                self.targets = torch.load(self.conf.facebank_path/'facebank.pth')
+                self.names = np.load(self.conf.facebank_path/'names.npy')
+            else:
+                self.clf = load(home+'model.joblib')
+            _LOGGER.warning("Faces Loaded")
+        except:
+            _LOGGER.warning("Model not trained, retraining...")
+            faces = []
+            names = []
+            if self.model == "arc":
+                names = ['Unknown']
+            dir = home+"recogface/faces/"
+            train_dir = os.listdir(dir)
+            for person in train_dir:
+                pix = os.listdir(dir + person)
+                embs = []
+                for person_img in pix:
+                    pic = cv2.imread(dir + person + "/" + person_img)
+                    if self.model == "arc":
+                        face = self.face_detector.detect_align(pic)[0]
+                        if len(face) == 1:
                             with torch.no_grad():
-                                face = self.faces_preprocessing(face)
-                                embs.append(self.arcmodel(face))
+                                embs.append(self.arcmodel(self.faces_preprocessing(face)))
                         else:
-                            boxes = self.locate(pic)
-                            if len(boxes) == 1:
-                                face = cv2.cvtColor(pic, cv2.COLOR_BGR2RGB)
-                                face_enc = self.face_encodings(face, boxes, 100, model=self.fmodel)[0]
-                                faces.append(face_enc)
-                                names.append(person)
-                            else:
-                                _LOGGER.error(person_img+" can't be used for training", person, person_img)
-                    if self.model == "arcface":
-                        faces_emb = torch.cat(embs).mean(0, keepdim=True)
-                        faces.append(faces_emb)
-                        names = np.append(names, person)
-                if self.model == "arcface":
-                    self.targets = torch.cat(faces)
-                    torch.save(self.targets, str(self.conf.facebank_path)+'/facebank.pth')
-                    self.names = names
-                    np.save(str(self.conf.facebank_path)+'/names', names)
-                else:
+                            _LOGGER.error(person_img+" can't be used for training")
+                    else:
+                        boxes = self.locate(pic)
+                        if len(boxes) == 1:
+                            face = cv2.cvtColor(pic, cv2.COLOR_BGR2RGB)
+                            face_enc = self.face_encodings(face, boxes, 100, model=self.fmodel)[0]
+                            embs.append(face_enc)
+                        else:
+                            _LOGGER.error(person_img+" can't be used for training")
+                if self.model == "arc":
+                    faces.append(torch.cat(embs).mean(0, keepdim=True))
+                    names.append(person)
+            if self.model == "arc":
+               self.targets = torch.cat(faces)
+               torch.save(self.targets, str(self.conf.facebank_path)+'/facebank.pth')
+               self.names = np.array(names)
+               np.save(str(self.conf.facebank_path)+'/names', self.names)
+            else:
                 # Create and train the SVC classifier
-                    self.clf = svm.SVC(gamma ='scale')
-                    self.clf.fit(faces, names)
-                    dump(self.clf, home+'model.joblib')
-            _LOGGER.warning("Model training done and saved...")
+                self.clf = svm.SVC(gamma ='scale')
+                self.clf.fit(faces, names)
+                dump(self.clf, home+'model.joblib')
+            _LOGGER.warning("Model training completed and saved...")
+
 
     @property
     def camera_entity(self):
         """Return camera entity id from process pictures."""
         return self._camera
 
+
     @property
     def name(self):
         """Return the name of the entity."""
         return self._name
 
+
     def process_image(self, image):
         """Process image."""
         unknowns = []
         found = []
-        if self.model == "arcface":
+        if self.model == "arc":
             faces, unknowns, scores, landmarks = self.face_detector.detect_align(image)
             if len(faces)>0:
-                face = self.faces_preprocessing(faces)
-                embs = self.arcmodel(face)
+                embs = self.arcmodel(self.faces_preprocessing(faces))
                 diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
                 dist = torch.sum(torch.pow(diff, 2), dim=1)
                 minimum, min_idx = torch.min(dist, dim=1)
                 min_idx[minimum > self.conf.threshold] = -1  # if no match, set idx to -1
 
                 for idx, bbox in enumerate(unknowns):
-                    found.append({ATTR_NAME: self.names[min_idx[idx]]})
+                    found.append({ATTR_NAME: self.names[min_idx[idx]+1]})
         else:
             face_locations = self.locate(image)
             if face_locations:
