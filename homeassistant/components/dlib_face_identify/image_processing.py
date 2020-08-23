@@ -24,6 +24,7 @@ import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home())+"/.homeassistant/"
+
 ATTR_NAME = "name"
 
 def get_config():
@@ -39,7 +40,7 @@ def get_config():
     conf.net_mode = 'ir_se'  # or 'ir'
     conf.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     conf.data_mode = 'emore'
-    conf.batch_size = 5  # irse net depth 50
+    conf.batch_size = 1  # irse net depth 50
     conf.facebank_path = Path(home+'recogface/')
     conf.threshold = 1.5
     conf.face_limit = 10        # when inference, at maximum detect 10 faces in one image
@@ -71,7 +72,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         self.face_detector = FaceDetector(weight_path=home+'model/Resnet50_Final.pth', device=self.device)
         self._camera = camera_entity
         self.conf = get_config()
-        self.arcmodel = Backbone(self.conf.net_depth, self.conf.drop_ratio, self.conf.net_mode).to(self.device)
+        self.arcmodel = Backbone(self.conf.net_depth, self.conf.drop_ratio, self.conf.net_mode).half().to(self.device)
         try:
             self.arcmodel.load_state_dict(torch.load(f'{self.conf.model_path}/model_ir_se50.pth'))
         except IOError as e:
@@ -89,7 +90,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         faces = faces.div(255).to(self.device)
         mu = torch.as_tensor([.5, .5, .5], dtype=faces.dtype, device=self.device)
         faces[:].sub_(mu[:, None, None]).div_(mu[:, None, None])
-        return faces
+        return faces.half()
 
     def train_faces(self):
 
