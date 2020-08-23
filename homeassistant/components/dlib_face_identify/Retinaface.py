@@ -11,14 +11,13 @@ from .utils.box_utils import decode, decode_landmark, prior_box, nms
 from .models.retinaface import RetinaFace
 
 cfg = {
-    'name': 'Resnet50',
     'min_sizes': [[16, 32], [64, 128], [256, 512]],
     'steps': [8, 16, 32],
     'variance': [0.1, 0.2],
     'clip': False,
     'loc_weight': 2.0,
     'gpu_train': True,
-    'batch_size': 5,
+    'batch_size': 1,
     'ngpu': 4,
     'epoch': 100,
     'decay1': 70,
@@ -46,15 +45,14 @@ class FaceDetector:
         # setting for model
 #        model = TRTModule()
 #        model.load_state_dict(torch.load('/home/anhman/.homeassistant/model/retina_trt.pth'))
-        model = RetinaFace(cfg)
         state_dict = torch.load(weight_path)
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             name = k[7:] # remove `module.`
             new_state_dict[name] = v
+        model = RetinaFace(cfg).half().to(device)
         model.load_state_dict(new_state_dict)
-        model.to(device).eval()
-        #model.half()
+        model.eval()
         self.model = model
         self.device = device
         self.cfg = cfg
@@ -71,8 +69,8 @@ class FaceDetector:
         return
 
     def preprocessor(self, img_raw):
-        img = torch.tensor(img_raw, dtype=torch.float32).to(self.device)
-        #img = torch.tensor(img_raw, dtype=torch.float16).to(self.device)
+        #img = torch.tensor(img_raw, dtype=torch.float32).to(self.device)
+        img = torch.tensor(img_raw, dtype=torch.float16).to(self.device)
         scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]]).to(self.device)
         img -= torch.tensor([104, 117, 123]).to(self.device)
         img = img.permute(2, 0, 1).unsqueeze(0)
@@ -171,5 +169,5 @@ class FaceDetector:
             face_img = cv2.warpAffine(img, self.trans.params[0:2, :], self.out_size)
             warped.append(face_img)
 
-        faces = torch.tensor(warped).to(self.device)
+        faces = torch.tensor(warped, dtype=torch.float16).to(self.device)
         return faces, boxes, scores, landmarks
