@@ -1,7 +1,6 @@
 """Component that will process object detection with opencv."""
 import logging
 import cv2
-import numpy as np
 import torch
 import torchvision
 # pylint: disable=import-error
@@ -47,7 +46,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 def xywh2xyxy(x):
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
-    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
+    y = torch.zeros_like(x)
     y[:, 0] = x[:, 0] - x[:, 2] / 2  # top left x
     y[:, 1] = x[:, 1] - x[:, 3] / 2  # top left y
     y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x
@@ -136,7 +135,6 @@ class OpenCVImageProcessor(ImageProcessingEntity):
         """Initialize the OpenCV entity."""
 
         super().__init__()
-
 
         self.model = model
         self.hass = hass
