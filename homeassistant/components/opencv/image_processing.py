@@ -26,16 +26,17 @@ import homeassistant.helpers.config_validation as cv
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home())+"/.homeassistant/model/"
 
+ATTR_MATCHES = "matches"
+ATTR_TOTAL_MATCHES = "total_matches"
 CONF_CLASSIFIER = "classifier"
 CONFIDENCE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.4
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+imgsz = int(672)
 sys.path.insert(0, str(Path.home())+'/.local/lib/python3.7/site-packages/homeassistant/components/opencv/')
-
+model = torch.load(home+'yolov4x-mish.pt', device)['model'].fuse().eval().half()
 with open(home+'cococlasses.txt', "r") as f:
     class_names = [cname.strip() for cname in f.readlines()]
-
-ATTR_MATCHES = "matches"
-ATTR_TOTAL_MATCHES = "total_matches"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -108,7 +109,6 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None,
 def preprocessor(img_raw, w, h, device):
     img_raw = cv2.resize(img_raw,(w,h))
     #img_raw = cv2.cvtColor(img_raw, cv2.COLOR_BGR2RGB)
-    #img = torch.tensor(img_raw, dtype=torch.float32).to(self.device)
     img = torch.tensor(img_raw, dtype=torch.float16).div(255).to(device)
     img = img.permute(2, 0, 1).unsqueeze(0)
     return img
@@ -137,21 +137,8 @@ class OpenCVImageProcessor(ImageProcessingEntity):
 
         super().__init__()
 
-        self.mode = "5"
 
-        if self.mode == "5":
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#            self.model = torch.load(home+'yolov5l.pt', self.device)['model'].fuse().eval().half()
-            self.model = torch.load(home+'yolov4x-mish.pt', self.device)['model'].fuse().eval().half()
-
-        else:
-            self.net = cv2.dnn.readNet(home+'yolov4.weights', home+'yolov4.cfg')
-            self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-            #self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
-            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
-            self.model = cv2.dnn_DetectionModel(self.net)
-            self.model.setInputParams(size=(608, 608), scale=1/256)
-
+        self.model = model
         self.hass = hass
         self._camera = camera_entity
         if name:
@@ -186,29 +173,18 @@ class OpenCVImageProcessor(ImageProcessingEntity):
     def process_image(self, image):
         """Process image."""
 
-        if self.mode == "5":
-            imgsz = int(672)
-            img = preprocessor(image, imgsz, imgsz, self.device)
-            with torch.no_grad():
-                pred = self.model(img)[0]
-            pred = non_max_suppression(pred, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
-            self._matches = []
-            for i, det in enumerate(pred):  # detections per image
-                if det is not None and len(det):
-                    for c in det[:, -1].unique():
-                        n = (det[:, -1] == c).sum()  # detections per class
-                        s = det[:,4]
-                        if s[i] >=  self._confidence:
-                            if class_names[int(c)] in self._classifiers:
-                                label = "%g %s : %.2f" % (n, class_names[int(c)], s[i] * 100)
-                                self._matches.append(label)
-        else:
-            classes, scores, boxes = self.model.detect(image, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
-            self._matches = []
-            for (classid, score, box) in zip(classes, scores, boxes):
-                if score >= self._confidence:
-                    if class_names[classid[0]] in self._classifiers:
-                        label = "%s : %.2f" % (class_names[classid[0]], score * 100)
-                        self._matches.append(label)
-
+        img = preprocessor(image, imgsz, imgsz, device)
+        with torch.no_grad():
+            pred = self.model(img)[0]
+        pred = non_max_suppression(pred, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
+        self._matches = []
+        for i, det in enumerate(pred):  # detections per image
+            if det is not None and len(det):
+                for c in det[:, -1].unique():
+                    n = (det[:, -1] == c).sum()  # detections per class
+                    s = det[:,4]
+                    if s[i] >=  self._confidence:
+                        if class_names[int(c)] in self._classifiers:
+                            label = "%g %s : %.2f" % (n, class_names[int(c)], s[i] * 100)
+                            self._matches.append(label)
         self._total_matches = len(self._matches)
