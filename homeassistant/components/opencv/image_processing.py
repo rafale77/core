@@ -110,8 +110,6 @@ def preprocessor(img_raw, w, h, device):
     #img_raw = cv2.cvtColor(img_raw, cv2.COLOR_BGR2RGB)
     #img = torch.tensor(img_raw, dtype=torch.float32).to(self.device)
     img = torch.tensor(img_raw, dtype=torch.float16).div(255).to(device)
-    #img = torch.from_numpy(img_raw).half().to(device)
-    #img = torch.true_divide(img, 255)
     img = img.permute(2, 0, 1).unsqueeze(0)
     return img
 
@@ -197,11 +195,13 @@ class OpenCVImageProcessor(ImageProcessingEntity):
             self._matches = []
             for i, det in enumerate(pred):  # detections per image
                 if det is not None and len(det):
-                    c, s = det[:,-1], det[:,4]
-                    if s >=  self._confidence:
-                        if class_names[int(c)] in self._classifiers:
-                            label = "%s : %.2f" % (class_names[int(c)], s * 100)
-                            self._matches.append(label)
+                    for c in det[:, -1].unique():
+                        n = (det[:, -1] == c).sum()  # detections per class
+                        s = det[:,4]
+                        if s[i] >=  self._confidence:
+                            if class_names[int(c)] in self._classifiers:
+                                label = "%g %s : %.2f" % (n, class_names[int(c)], s[i] * 100)
+                                self._matches.append(label)
         else:
             classes, scores, boxes = self.model.detect(image, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
             self._matches = []
