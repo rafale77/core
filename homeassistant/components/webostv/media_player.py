@@ -75,7 +75,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     turn_on_action = discovery_info.get(CONF_ON_ACTION)
 
     client = hass.data[DOMAIN][host]["client"]
-    on_script = Script(hass, turn_on_action) if turn_on_action else None
+    on_script = Script(hass, turn_on_action, name, DOMAIN) if turn_on_action else None
 
     entity = LgWebOSMediaPlayerEntity(client, name, customize, on_script)
 
@@ -305,7 +305,9 @@ class LgWebOSMediaPlayerEntity(MediaPlayerEntity):
         """Flag media player features that are supported."""
         supported = SUPPORT_WEBOSTV
 
-        if self._client.sound_output == "external_arc":
+        if (self._client.sound_output == "external_arc") or (
+            self._client.sound_output == "external_speaker"
+        ):
             supported = supported | SUPPORT_WEBOSTV_VOLUME
         elif self._client.sound_output != "lineout":
             supported = supported | SUPPORT_WEBOSTV_VOLUME | SUPPORT_VOLUME_SET
@@ -331,7 +333,7 @@ class LgWebOSMediaPlayerEntity(MediaPlayerEntity):
     async def async_turn_on(self):
         """Turn on the media player."""
         if self._on_script:
-            await self._on_script.async_run()
+            await self._on_script.async_run(context=self._context)
 
     @cmd
     async def async_volume_up(self):

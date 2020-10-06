@@ -19,9 +19,11 @@ async def test_device(hass, config_entry, aioclient_mock_fixture, aioclient_mock
         hass, FLO_DOMAIN, {CONF_USERNAME: TEST_USER_ID, CONF_PASSWORD: TEST_PASSWORD}
     )
     await hass.async_block_till_done()
-    assert len(hass.data[FLO_DOMAIN]["devices"]) == 1
+    assert len(hass.data[FLO_DOMAIN][config_entry.entry_id]["devices"]) == 1
 
-    device: FloDeviceDataUpdateCoordinator = hass.data[FLO_DOMAIN]["devices"][0]
+    device: FloDeviceDataUpdateCoordinator = hass.data[FLO_DOMAIN][
+        config_entry.entry_id
+    ]["devices"][0]
     assert device.api_client is not None
     assert device.available
     assert device.consumption_today == 3.674
@@ -41,6 +43,12 @@ async def test_device(hass, config_entry, aioclient_mock_fixture, aioclient_mock
     assert device.manufacturer == "Flo by Moen"
     assert device.device_name == "Flo by Moen flo_device_075_v2"
     assert device.rssi == -47
+    assert device.pending_info_alerts_count == 0
+    assert device.pending_critical_alerts_count == 0
+    assert device.pending_warning_alerts_count == 2
+    assert device.has_alerts is True
+    assert device.last_known_valve_state == "open"
+    assert device.target_valve_state == "open"
 
     call_count = aioclient_mock.call_count
 
