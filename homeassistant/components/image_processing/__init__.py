@@ -120,13 +120,19 @@ class ImageProcessingEntity(Entity):
         image = None
 
         try:
-            image = await camera.async_get_image(
+            image = await camera.async_get_raw_image(
                 self.camera_entity, timeout=self.timeout
             )
 
-        except HomeAssistantError as err:
-            _LOGGER.error("Error on receive image from entity: %s", err)
-            return
+        except AttributeError:
+            try:
+                image = await camera.async_get_image(
+                    self.camera_entity, timeout=self.timeout
+                )
+
+            except HomeAssistantError as err:
+                _LOGGER.error("Error on receive image from entity: %s", err)
+                return
 
         # process image data
         await self.async_process_image(image.content)
