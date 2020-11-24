@@ -9,7 +9,7 @@ from broadlink.exceptions import (
     AuthorizationError,
     BroadlinkException,
     CommandNotSupportedError,
-    DeviceOfflineError,
+    NetworkTimeoutError,
     StorageError,
 )
 
@@ -31,6 +31,8 @@ def get_update_manager(device):
         "RM4": BroadlinkRMUpdateManager,
         "SP1": BroadlinkSP1UpdateManager,
         "SP2": BroadlinkSP2UpdateManager,
+        "SP4": BroadlinkSP4UpdateManager,
+        "SP4B": BroadlinkSP4UpdateManager,
     }
     return update_managers[device.api.type](device)
 
@@ -42,15 +44,17 @@ class BroadlinkUpdateManager(ABC):
     monitor device availability.
     """
 
+    SCAN_INTERVAL = timedelta(minutes=1)
+
     def __init__(self, device):
         """Initialize the update manager."""
         self.device = device
         self.coordinator = DataUpdateCoordinator(
             device.hass,
             _LOGGER,
-            name="device",
+            name=f"{device.name} ({device.api.model} at {device.api.host[0]})",
             update_method=self.async_update,
-            update_interval=timedelta(minutes=1),
+            update_interval=self.SCAN_INTERVAL,
         )
         self.available = None
         self.last_update = None
@@ -62,19 +66,25 @@ class BroadlinkUpdateManager(ABC):
 
         except (BroadlinkException, OSError) as err:
             if self.available and (
-                dt.utcnow() - self.last_update > timedelta(minutes=3)
+                dt.utcnow() - self.last_update > self.SCAN_INTERVAL * 3
                 or isinstance(err, (AuthorizationError, OSError))
             ):
                 self.available = False
                 _LOGGER.warning(
-                    "Disconnected from the device at %s", self.device.api.host[0]
+                    "Disconnected from %s (%s at %s)",
+                    self.device.name,
+                    self.device.api.model,
+                    self.device.api.host[0],
                 )
             raise UpdateFailed(err) from err
 
         else:
             if self.available is False:
                 _LOGGER.warning(
-                    "Connected to the device at %s", self.device.api.host[0]
+                    "Connected to %s (%s at %s)",
+                    self.device.name,
+                    self.device.api.model,
+                    self.device.api.host[0],
                 )
             self.available = True
             self.last_update = dt.utcnow()
@@ -87,6 +97,8 @@ class BroadlinkUpdateManager(ABC):
 
 class BroadlinkA1UpdateManager(BroadlinkUpdateManager):
     """Manages updates for Broadlink A1 devices."""
+
+    SCAN_INTERVAL = timedelta(seconds=10)
 
     async def async_fetch_data(self):
         """Fetch data from the device."""
@@ -113,7 +125,7 @@ class BroadlinkRMMini3UpdateManager(BroadlinkUpdateManager):
         )
         devices = await self.device.hass.async_add_executor_job(hello)
         if not devices:
-            raise DeviceOfflineError("The device is offline")
+            raise NetworkTimeoutError("The device is offline")
         return {}
 
 
@@ -147,3 +159,11 @@ class BroadlinkSP2UpdateManager(BroadlinkUpdateManager):
         except (CommandNotSupportedError, StorageError):
             data["load_power"] = None
         return data
+
+
+class BroadlinkSP4UpdateManager(BroadlinkUpdateManager):
+    """Manages updates for Broadlink SP4 devices."""
+
+    async def async_fetch_data(self):
+        """Fetch data from the device."""
+        return await self.device.async_request(self.device.api.get_state)

@@ -1,30 +1,24 @@
 """Shelly entity helper."""
-from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 import aioshelly
 
-from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry, entity
 
 from . import ShellyDeviceWrapper
-from .const import DOMAIN
-
-
-def temperature_unit(block_info: dict) -> str:
-    """Detect temperature unit."""
-    if block_info[aioshelly.BLOCK_VALUE_UNIT] == "F":
-        return TEMP_FAHRENHEIT
-    return TEMP_CELSIUS
+from .const import DATA_CONFIG_ENTRY, DOMAIN
+from .utils import get_entity_name
 
 
 async def async_setup_entry_attribute_entities(
     hass, config_entry, async_add_entities, sensors, sensor_class
 ):
     """Set up entities for block attributes."""
-    wrapper: ShellyDeviceWrapper = hass.data[DOMAIN][config_entry.entry_id]
+    wrapper: ShellyDeviceWrapper = hass.data[DOMAIN][DATA_CONFIG_ENTRY][
+        config_entry.entry_id
+    ]
     blocks = []
 
     for block in wrapper.device.blocks:
@@ -42,11 +36,9 @@ async def async_setup_entry_attribute_entities(
     if not blocks:
         return
 
-    counts = Counter([item[1] for item in blocks])
-
     async_add_entities(
         [
-            sensor_class(wrapper, block, sensor_id, description, counts[sensor_id])
+            sensor_class(wrapper, block, sensor_id, description)
             for block, sensor_id, description in blocks
         ]
     )
@@ -75,7 +67,7 @@ class ShellyBlockEntity(entity.Entity):
         """Initialize Shelly entity."""
         self.wrapper = wrapper
         self.block = block
-        self._name = f"{self.wrapper.name} {self.block.description.replace('_', ' ')}"
+        self._name = get_entity_name(wrapper, block)
 
     @property
     def name(self):
@@ -127,7 +119,6 @@ class ShellyBlockAttributeEntity(ShellyBlockEntity, entity.Entity):
         block: aioshelly.Block,
         attribute: str,
         description: BlockAttributeDescription,
-        same_type_count: int,
     ) -> None:
         """Initialize sensor."""
         super().__init__(wrapper, block)
@@ -142,13 +133,7 @@ class ShellyBlockAttributeEntity(ShellyBlockEntity, entity.Entity):
 
         self._unit = unit
         self._unique_id = f"{super().unique_id}-{self.attribute}"
-
-        name_parts = [self.wrapper.name]
-        if same_type_count > 1:
-            name_parts.append(str(block.channel))
-        name_parts.append(self.description.name)
-
-        self._name = " ".join(name_parts)
+        self._name = get_entity_name(wrapper, block, self.description.name)
 
     @property
     def unique_id(self):

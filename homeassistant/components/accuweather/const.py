@@ -1,10 +1,12 @@
 """Constants for AccuWeather integration."""
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
+    CONCENTRATION_PARTS_PER_CUBIC_METER,
     DEVICE_CLASS_TEMPERATURE,
     LENGTH_FEET,
     LENGTH_INCHES,
     LENGTH_METERS,
+    LENGTH_MILLIMETERS,
     PERCENTAGE,
     SPEED_KILOMETERS_PER_HOUR,
     SPEED_MILES_PER_HOUR,
@@ -12,7 +14,6 @@ from homeassistant.const import (
     TEMP_FAHRENHEIT,
     TIME_HOURS,
     UV_INDEX,
-    VOLUME_CUBIC_METERS,
 )
 
 ATTRIBUTION = "Data provided by AccuWeather"
@@ -21,10 +22,8 @@ ATTR_FORECAST = CONF_FORECAST = "forecast"
 ATTR_LABEL = "label"
 ATTR_UNIT_IMPERIAL = "Imperial"
 ATTR_UNIT_METRIC = "Metric"
-CONCENTRATION_PARTS_PER_CUBIC_METER = f"p/{VOLUME_CUBIC_METERS}"
 COORDINATOR = "coordinator"
 DOMAIN = "accuweather"
-LENGTH_MILIMETERS = "mm"
 MANUFACTURER = "AccuWeather, Inc."
 NAME = "AccuWeather"
 UNDO_UPDATE_LISTENER = "undo_update_listener"
@@ -238,7 +237,7 @@ SENSOR_TYPES = {
         ATTR_DEVICE_CLASS: None,
         ATTR_ICON: "mdi:weather-rainy",
         ATTR_LABEL: "Precipitation",
-        ATTR_UNIT_METRIC: LENGTH_MILIMETERS,
+        ATTR_UNIT_METRIC: LENGTH_MILLIMETERS,
         ATTR_UNIT_IMPERIAL: LENGTH_INCHES,
     },
     "PressureTendency": {

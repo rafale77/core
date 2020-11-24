@@ -14,8 +14,9 @@ from homeassistant.const import (
     DEVICE_CLASS_PRESSURE,
     DEVICE_CLASS_TEMPERATURE,
     DEVICE_CLASS_TIMESTAMP,
+    LENGTH_MILLIMETERS,
     PERCENTAGE,
-    PRESSURE_PA,
+    PRESSURE_HPA,
     SPEED_METERS_PER_SECOND,
     TEMP_CELSIUS,
 )
@@ -23,11 +24,10 @@ from homeassistant.const import (
 DOMAIN = "openweathermap"
 DEFAULT_NAME = "OpenWeatherMap"
 DEFAULT_LANGUAGE = "en"
-DEFAULT_FORECAST_MODE = "freedaily"
 ATTRIBUTION = "Data provided by OpenWeatherMap"
 CONF_LANGUAGE = "language"
+CONFIG_FLOW_VERSION = 2
 ENTRY_NAME = "name"
-ENTRY_FORECAST_COORDINATOR = "forecast_coordinator"
 ENTRY_WEATHER_COORDINATOR = "weather_coordinator"
 ATTR_API_PRECIPITATION = "precipitation"
 ATTR_API_DATETIME = "datetime"
@@ -43,13 +43,25 @@ ATTR_API_RAIN = "rain"
 ATTR_API_SNOW = "snow"
 ATTR_API_WEATHER_CODE = "weather_code"
 ATTR_API_FORECAST = "forecast"
-ATTR_API_THIS_DAY_FORECAST = "this_day_forecast"
 SENSOR_NAME = "sensor_name"
 SENSOR_UNIT = "sensor_unit"
 SENSOR_DEVICE_CLASS = "sensor_device_class"
 UPDATE_LISTENER = "update_listener"
 COMPONENTS = ["sensor", "weather"]
-FORECAST_MODES = ["hourly", "daily", "freedaily"]
+
+FORECAST_MODE_HOURLY = "hourly"
+FORECAST_MODE_DAILY = "daily"
+FORECAST_MODE_FREE_DAILY = "freedaily"
+FORECAST_MODE_ONECALL_HOURLY = "onecall_hourly"
+FORECAST_MODE_ONECALL_DAILY = "onecall_daily"
+FORECAST_MODES = [
+    FORECAST_MODE_HOURLY,
+    FORECAST_MODE_DAILY,
+    FORECAST_MODE_ONECALL_HOURLY,
+    FORECAST_MODE_ONECALL_DAILY,
+]
+DEFAULT_FORECAST_MODE = FORECAST_MODE_ONECALL_DAILY
+
 MONITORED_CONDITIONS = [
     ATTR_API_WEATHER,
     ATTR_API_TEMPERATURE,
@@ -72,7 +84,57 @@ FORECAST_MONITORED_CONDITIONS = [
     ATTR_FORECAST_WIND_BEARING,
     ATTR_FORECAST_WIND_SPEED,
 ]
-LANGUAGES = ["en", "es", "ru", "it"]
+LANGUAGES = [
+    "af",
+    "al",
+    "ar",
+    "az",
+    "bg",
+    "ca",
+    "cz",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "eu",
+    "fa",
+    "fi",
+    "fr",
+    "gl",
+    "he",
+    "hi",
+    "hr",
+    "hu",
+    "id",
+    "it",
+    "ja",
+    "kr",
+    "la",
+    "lt",
+    "mk",
+    "nl",
+    "no",
+    "pl",
+    "pt",
+    "pt_br",
+    "ro",
+    "ru",
+    "se",
+    "sk",
+    "sl",
+    "sp",
+    "sr",
+    "sv",
+    "th",
+    "tr",
+    "ua",
+    "uk",
+    "vi",
+    "zh_cn",
+    "zh_tw",
+    "zu",
+]
 CONDITION_CLASSES = {
     "cloudy": [803, 804],
     "fog": [701, 741],
@@ -108,12 +170,12 @@ WEATHER_SENSOR_TYPES = {
     },
     ATTR_API_PRESSURE: {
         SENSOR_NAME: "Pressure",
-        SENSOR_UNIT: PRESSURE_PA,
+        SENSOR_UNIT: PRESSURE_HPA,
         SENSOR_DEVICE_CLASS: DEVICE_CLASS_PRESSURE,
     },
     ATTR_API_CLOUDS: {SENSOR_NAME: "Cloud coverage", SENSOR_UNIT: PERCENTAGE},
-    ATTR_API_RAIN: {SENSOR_NAME: "Rain", SENSOR_UNIT: "mm"},
-    ATTR_API_SNOW: {SENSOR_NAME: "Snow", SENSOR_UNIT: "mm"},
+    ATTR_API_RAIN: {SENSOR_NAME: "Rain", SENSOR_UNIT: LENGTH_MILLIMETERS},
+    ATTR_API_SNOW: {SENSOR_NAME: "Snow", SENSOR_UNIT: LENGTH_MILLIMETERS},
     ATTR_API_CONDITION: {SENSOR_NAME: "Condition"},
     ATTR_API_WEATHER_CODE: {SENSOR_NAME: "Weather Code"},
 }
