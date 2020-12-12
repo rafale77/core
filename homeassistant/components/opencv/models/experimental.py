@@ -10,7 +10,7 @@ class CrossConv(nn.Module):
     # Cross Convolution Downsample
     def __init__(self, c1, c2, k=3, s=1, g=1, e=1.0, shortcut=False):
         # ch_in, ch_out, kernel, stride, groups, expansion, shortcut
-        super(CrossConv, self).__init__()
+        super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, c_, (1, k), (1, s))
         self.cv2 = Conv(c_, c2, (k, 1), (s, 1), g=g)
@@ -25,7 +25,7 @@ class C3(nn.Module):
     def __init__(
         self, c1, c2, n=1, shortcut=True, g=1, e=0.5
     ):  # ch_in, ch_out, number, shortcut, groups, expansion
-        super(C3, self).__init__()
+        super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = nn.Conv2d(c1, c_, 1, 1, bias=False)
@@ -46,7 +46,7 @@ class C3(nn.Module):
 class Sum(nn.Module):
     # Weighted sum of 2 or more layers https://arxiv.org/abs/1911.09070
     def __init__(self, n, weight=False):  # n: number of inputs
-        super(Sum, self).__init__()
+        super().__init__()
         self.weight = weight  # apply weights boolean
         self.iter = range(n - 1)  # iter object
         if weight:
@@ -71,7 +71,7 @@ class GhostConv(nn.Module):
     def __init__(
         self, c1, c2, k=1, s=1, g=1, act=True
     ):  # ch_in, ch_out, kernel, stride, groups
-        super(GhostConv, self).__init__()
+        super().__init__()
         c_ = c2 // 2  # hidden channels
         self.cv1 = Conv(c1, c_, k, s, g, act)
         self.cv2 = Conv(c_, c_, 5, 1, c_, act)
@@ -84,7 +84,7 @@ class GhostConv(nn.Module):
 class GhostBottleneck(nn.Module):
     # Ghost Bottleneck https://github.com/huawei-noah/ghostnet
     def __init__(self, c1, c2, k, s):
-        super(GhostBottleneck, self).__init__()
+        super().__init__()
         c_ = c2 // 2
         self.conv = nn.Sequential(
             GhostConv(c1, c_, 1, 1),  # pw
@@ -106,7 +106,7 @@ class GhostBottleneck(nn.Module):
 class MixConv2d(nn.Module):
     # Mixed Depthwise Conv https://arxiv.org/abs/1907.09595
     def __init__(self, c1, c2, k=(1, 3), s=1, equal_ch=True):
-        super(MixConv2d, self).__init__()
+        super().__init__()
         groups = len(k)
         if equal_ch:  # equal c_ per group
             i = torch.linspace(0, groups - 1e-6, c2).floor()  # c2 indices
@@ -137,7 +137,7 @@ class MixConv2d(nn.Module):
 class Ensemble(nn.ModuleList):
     # Ensemble of models
     def __init__(self):
-        super(Ensemble, self).__init__()
+        super().__init__()
 
     def forward(self, x, augment=False):
         y = []
