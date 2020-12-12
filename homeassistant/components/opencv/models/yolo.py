@@ -1,11 +1,12 @@
 from copy import deepcopy
 from pathlib import Path
-import torch.nn.functional as F
-import math
-import torch.nn as nn
-import torch
 import logging
+import math
 import ast
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 from .common import Conv, Bottleneck, SPP, DWConv, Focus, BottleneckCSP, Concat
 from .experimental import MixConv2d, CrossConv, C3
