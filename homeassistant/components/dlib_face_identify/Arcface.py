@@ -1,11 +1,27 @@
-from torch.nn import Linear, Conv2d, BatchNorm1d, BatchNorm2d, PReLU, ReLU, Sigmoid, Dropout2d, Dropout, AvgPool2d, \
-    MaxPool2d, AdaptiveAvgPool2d, Sequential, Module, Parameter
+from torch.nn import (
+    Linear,
+    Conv2d,
+    BatchNorm1d,
+    BatchNorm2d,
+    PReLU,
+    ReLU,
+    Sigmoid,
+    Dropout2d,
+    Dropout,
+    AvgPool2d,
+    MaxPool2d,
+    AdaptiveAvgPool2d,
+    Sequential,
+    Module,
+    Parameter,
+)
 import torch
 from collections import namedtuple
 import math
 
 
 ##################################  Original Arcface Model ############################################################
+
 
 class Flatten(Module):
     def forward(self, input):
@@ -22,9 +38,13 @@ class SEModule(Module):
     def __init__(self, channels, reduction):
         super(SEModule, self).__init__()
         self.avg_pool = AdaptiveAvgPool2d(1)
-        self.fc1 = Conv2d(channels, channels // reduction, kernel_size=1, padding=0, bias=False)
+        self.fc1 = Conv2d(
+            channels, channels // reduction, kernel_size=1, padding=0, bias=False
+        )
         self.relu = ReLU(inplace=True)
-        self.fc2 = Conv2d(channels // reduction, channels, kernel_size=1, padding=0, bias=False)
+        self.fc2 = Conv2d(
+            channels // reduction, channels, kernel_size=1, padding=0, bias=False
+        )
         self.sigmoid = Sigmoid()
 
     def forward(self, x):
@@ -44,11 +64,16 @@ class bottleneck_IR(Module):
             self.shortcut_layer = MaxPool2d(1, stride)
         else:
             self.shortcut_layer = Sequential(
-                Conv2d(in_channel, depth, (1, 1), stride, bias=False), BatchNorm2d(depth))
+                Conv2d(in_channel, depth, (1, 1), stride, bias=False),
+                BatchNorm2d(depth),
+            )
         self.res_layer = Sequential(
             BatchNorm2d(in_channel),
-            Conv2d(in_channel, depth, (3, 3), (1, 1), 1, bias=False), PReLU(depth),
-            Conv2d(depth, depth, (3, 3), stride, 1, bias=False), BatchNorm2d(depth))
+            Conv2d(in_channel, depth, (3, 3), (1, 1), 1, bias=False), 
+            PReLU(depth),
+            Conv2d(depth, depth, (3, 3), stride, 1, bias=False), 
+            BatchNorm2d(depth),
+        )
 
     def forward(self, x):
         shortcut = self.shortcut_layer(x)
@@ -62,14 +87,17 @@ class bottleneck_IR_SE(Module):
         if in_channel == depth:
             self.shortcut_layer = MaxPool2d(1, stride)
         else:
-            self.shortcut_layer = Sequential(Conv2d(in_channel, depth, (1, 1), stride, bias=False), BatchNorm2d(depth))
+            self.shortcut_layer = Sequential(
+                Conv2d(in_channel, depth, (1, 1), stride, bias=False), 
+                BatchNorm2d(depth),
+            )
         self.res_layer = Sequential(
             BatchNorm2d(in_channel),
             Conv2d(in_channel, depth, (3, 3), (1, 1), 1, bias=False),
             PReLU(depth),
             Conv2d(depth, depth, (3, 3), stride, 1, bias=False),
             BatchNorm2d(depth),
-            SEModule(depth, 16)
+            SEModule(depth, 16),
         )
 
     def forward(self, x):
@@ -78,12 +106,14 @@ class bottleneck_IR_SE(Module):
         return res + shortcut
 
 
-class Bottleneck(namedtuple('Block', ['in_channel', 'depth', 'stride'])):
-    '''A named tuple describing a ResNet block.'''
+class Bottleneck(namedtuple("Block", ["in_channel", "depth", "stride"])):
+    """A named tuple describing a ResNet block."""
 
 
 def get_block(in_channel, depth, num_units, stride=2):
-    return [Bottleneck(in_channel, depth, stride)] + [Bottleneck(depth, depth, 1) for i in range(num_units - 1)]
+    return [Bottleneck(in_channel, depth, stride)] + [
+        Bottleneck(depth, depth, 1) for i in range(num_units - 1)
+    ]
 
 
 def get_blocks(num_layers):
@@ -92,45 +122,53 @@ def get_blocks(num_layers):
             get_block(in_channel=64, depth=64, num_units=3),
             get_block(in_channel=64, depth=128, num_units=4),
             get_block(in_channel=128, depth=256, num_units=14),
-            get_block(in_channel=256, depth=512, num_units=3)
+            get_block(in_channel=256, depth=512, num_units=3),
         ]
     elif num_layers == 100:
         blocks = [
             get_block(in_channel=64, depth=64, num_units=3),
             get_block(in_channel=64, depth=128, num_units=13),
             get_block(in_channel=128, depth=256, num_units=30),
-            get_block(in_channel=256, depth=512, num_units=3)
+            get_block(in_channel=256, depth=512, num_units=3),
         ]
     elif num_layers == 152:
         blocks = [
             get_block(in_channel=64, depth=64, num_units=3),
             get_block(in_channel=64, depth=128, num_units=8),
             get_block(in_channel=128, depth=256, num_units=36),
-            get_block(in_channel=256, depth=512, num_units=3)
+            get_block(in_channel=256, depth=512, num_units=3),
         ]
     return blocks
 
 
 class Backbone(Module):
-    def __init__(self, num_layers, drop_ratio, mode='ir'):
+    def __init__(self, num_layers, drop_ratio, mode="ir"):
         super(Backbone, self).__init__()
-        assert num_layers in [50, 100, 152], 'num_layers should be 50,100, or 152'
-        assert mode in ['ir', 'ir_se'], 'mode should be ir or ir_se'
+        assert num_layers in [50, 100, 152], "num_layers should be 50,100, or 152"
+        assert mode in ["ir", "ir_se"], "mode should be ir or ir_se"
         blocks = get_blocks(num_layers)
-        if mode == 'ir':
+        if mode == "ir":
             unit_module = bottleneck_IR
-        elif mode == 'ir_se':
+        elif mode == "ir_se":
             unit_module = bottleneck_IR_SE
-        self.input_layer = Sequential(Conv2d(3, 64, (3, 3), 1, 1, bias=False), BatchNorm2d(64), PReLU(64))
-        self.output_layer = Sequential(BatchNorm2d(512),
-                                       Dropout(drop_ratio),
-                                       Flatten(),
-                                       Linear(512 * 7 * 7, 512),
-                                       BatchNorm1d(512))
+        self.input_layer = Sequential(
+            Conv2d(3, 64, (3, 3), 1, 1, bias=False), BatchNorm2d(64), PReLU(64)
+                                     )
+        self.output_layer = Sequential(
+            BatchNorm2d(512),
+            Dropout(drop_ratio),
+            Flatten(),
+            Linear(512 * 7 * 7, 512),
+            BatchNorm1d(512),
+        )
         modules = []
         for block in blocks:
             for bottleneck in block:
-                modules.append(unit_module(bottleneck.in_channel, bottleneck.depth, bottleneck.stride))
+                modules.append(
+                    unit_module(
+                        bottleneck.in_channel, bottleneck.depth, bottleneck.stride
+                    )
+                )
         self.body = Sequential(*modules)
 
     def forward(self, x):
@@ -142,9 +180,10 @@ class Backbone(Module):
 
 ##################################  Arcface head #############################################################
 
+
 class Arcface(Module):
     # implementation of additive margin softmax loss in https://arxiv.org/abs/1801.05599
-    def __init__(self, embedding_size=512, classnum=51332, s=64., m=0.5):
+    def __init__(self, embedding_size=512, classnum=51332, s=64.0, m=0.5):
         super(Arcface, self).__init__()
         self.classnum = classnum
         self.kernel = Parameter(torch.Tensor(embedding_size, classnum))
@@ -168,13 +207,13 @@ class Arcface(Module):
         cos_theta_2 = torch.pow(cos_theta, 2)
         sin_theta_2 = 1 - cos_theta_2
         sin_theta = torch.sqrt(sin_theta_2)
-        cos_theta_m = (cos_theta * self.cos_m - sin_theta * self.sin_m)
+        cos_theta_m = cos_theta * self.cos_m - sin_theta * self.sin_m
         # this condition controls the theta+m should in range [0, pi]
         #      0<=theta+m<=pi
         #     -m<=theta<=pi-m
         cond_v = cos_theta - self.threshold
         cond_mask = cond_v <= 0
-        keep_val = (cos_theta - self.mm)  # when theta not in [0,pi], use cosface instead
+        keep_val = cos_theta - self.mm  # when theta not in [0,pi], use cosface instead
         cos_theta_m[cond_mask] = keep_val[cond_mask]
         output = cos_theta * 1.0  # a little bit hacky way to prevent in_place operation on cos_theta
         idx_ = torch.arange(0, nB, dtype=torch.long)
@@ -194,7 +233,7 @@ class Am_softmax(Module):
         # initial kernel
         self.kernel.data.uniform_(-1, 1).renorm_(2, 1, 1e-5).mul_(1e5)
         self.m = 0.35  # additive margin recommended by the paper
-        self.s = 30.  # see normface https://arxiv.org/abs/1704.06369
+        self.s = 30.0  # see normface https://arxiv.org/abs/1704.06369
 
     def forward(self, embbedings, label):
         kernel_norm = l2_norm(self.kernel, axis=0)
