@@ -36,7 +36,7 @@ def l2_norm(input, axis=1):
 
 class SEModule(Module):
     def __init__(self, channels, reduction):
-        super(SEModule, self).__init__()
+        super().__init__()
         self.avg_pool = AdaptiveAvgPool2d(1)
         self.fc1 = Conv2d(
             channels, channels // reduction, kernel_size=1, padding=0, bias=False
@@ -59,7 +59,7 @@ class SEModule(Module):
 
 class bottleneck_IR(Module):
     def __init__(self, in_channel, depth, stride):
-        super(bottleneck_IR, self).__init__()
+        super().__init__()
         if in_channel == depth:
             self.shortcut_layer = MaxPool2d(1, stride)
         else:
@@ -83,7 +83,7 @@ class bottleneck_IR(Module):
 
 class bottleneck_IR_SE(Module):
     def __init__(self, in_channel, depth, stride):
-        super(bottleneck_IR_SE, self).__init__()
+        super().__init__()
         if in_channel == depth:
             self.shortcut_layer = MaxPool2d(1, stride)
         else:
@@ -143,7 +143,7 @@ def get_blocks(num_layers):
 
 class Backbone(Module):
     def __init__(self, num_layers, drop_ratio, mode="ir"):
-        super(Backbone, self).__init__()
+        super().__init__()
         assert num_layers in [50, 100, 152], "num_layers should be 50,100, or 152"
         assert mode in ["ir", "ir_se"], "mode should be ir or ir_se"
         blocks = get_blocks(num_layers)
@@ -184,7 +184,7 @@ class Backbone(Module):
 class Arcface(Module):
     # implementation of additive margin softmax loss in https://arxiv.org/abs/1801.05599
     def __init__(self, embedding_size=512, classnum=51332, s=64.0, m=0.5):
-        super(Arcface, self).__init__()
+        super().__init__()
         self.classnum = classnum
         self.kernel = Parameter(torch.Tensor(embedding_size, classnum))
         # initial kernel
@@ -227,7 +227,7 @@ class Arcface(Module):
 class Am_softmax(Module):
     # implementation of additive margin softmax loss in https://arxiv.org/abs/1801.05599
     def __init__(self, embedding_size=512, classnum=51332):
-        super(Am_softmax, self).__init__()
+        super().__init__()
         self.classnum = classnum
         self.kernel = Parameter(torch.Tensor(embedding_size, classnum))
         # initial kernel
