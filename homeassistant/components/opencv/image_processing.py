@@ -23,7 +23,7 @@ from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
-home = str(Path.home())+"/.homeassistant/model/"
+home = str(Path.home()) + "/.homeassistant/model/"
 
 ATTR_MATCHES = "matches"
 ATTR_TOTAL_MATCHES = "total_matches"
@@ -32,9 +32,12 @@ CONFIDENCE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.4
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 imgsz = int(672)
-sys.path.insert(0, str(Path.home())+'/.local/lib/python3.7/site-packages/homeassistant/components/opencv/')
-model = torch.load(home+'yolov4l-mish.pt', device)['model'].fuse().eval().half()
-with open(home+'cococlasses.txt', "r") as f:
+sys.path.insert(
+    0,
+    str(Path.home()) + ".local/lib/python3.7/site-packages/homeassistant/components/opencv/"
+)
+model = torch.load(home + "yolov4l-mish.pt", device)["model"].fuse().eval().half()
+with open(home + "cococlasses.txt", "r") as f:
     class_names = [cname.strip() for cname in f.readlines()]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -44,6 +47,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
+
 def xywh2xyxy(x):
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
     y = torch.zeros_like(x)
@@ -52,6 +56,7 @@ def xywh2xyxy(x):
     y[:, 2] = x[:, 0] + x[:, 2] / 2  # bottom right x
     y[:, 3] = x[:, 1] + x[:, 3] / 2  # bottom right y
     return y
+
 
 def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None):
     """Performs Non-Maximum Suppression (NMS) on inference results
@@ -89,7 +94,11 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
 
         # Filter by class
         if classes:
-            x = x[(x[:, 5:6] == torch.tensor(classes, dtype=x.dtype, device=x.device)).any(1)]
+            x = x[
+                (
+                    x[:, 5:6] == torch.tensor(classes, dtype=x.dtype, device=x.device)
+                ).any(1)
+            ]
 
         # If none remain process next image
         n = x.shape[0]  # number of boxes
@@ -97,7 +106,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
             continue
 
         # Batched NMS
-        c = x[:, 5:6] *  max_wh  # classes
+        c = x[:, 5:6] * max_wh  # classes
         boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
         i = torch.ops.torchvision.nms(boxes, scores, iou_thres)
         if i.shape[0] > max_det:  # limit detections
@@ -106,7 +115,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
     return output
 
 def preprocessor(img_raw, w, h, device):
-    img_raw = cv2.resize(img_raw,(w,h))
+    img_raw = cv2.resize(img_raw, (w, h))
     img = torch.tensor(img_raw, dtype=torch.float16).div(255).to(device)
     img = img.permute(2, 0, 1).unsqueeze(0)
     return img
@@ -143,7 +152,7 @@ class OpenCVImageProcessor(ImageProcessingEntity):
         else:
             self._name = f"OpenCV {split_entity_id(camera_entity)[1]}"
         self._confidence = confidence
-        self._classifiers = classifiers.split(',')
+        self._classifiers = classifiers.split(",")
         self._matches = []
         self._total_matches = 0
 
@@ -179,9 +188,13 @@ class OpenCVImageProcessor(ImageProcessingEntity):
             if det is not None and len(det):
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
-                    s = det[:,4]
-                    if s[i] >=  self._confidence:
+                    s = det[:, 4]
+                    if s[i] >= self._confidence:
                         if class_names[int(c)] in self._classifiers:
-                            label = "%g %s : %.2f" % (n, class_names[int(c)], s[i] * 100)
+                            label = "%g %s : %.2f" % (
+                                n,
+                                class_names[int(c)],
+                                s[i] * 100
+                            )
                             self._matches.append(label)
         self._total_matches = len(self._matches)
