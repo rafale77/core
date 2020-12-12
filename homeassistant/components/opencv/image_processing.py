@@ -37,7 +37,7 @@ sys.path.insert(
     str(Path.home()) + ".local/lib/python3.7/site-packages/homeassistant/components/opencv/"
 )
 model = torch.load(home + "yolov4l-mish.pt", device)["model"].fuse().eval().half()
-with open(home + "cococlasses.txt", "r") as f:
+with open(home + "cococlasses.txt") as f:
     class_names = [cname.strip() for cname in f.readlines()]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -191,10 +191,6 @@ class OpenCVImageProcessor(ImageProcessingEntity):
                     s = det[:, 4]
                     if s[i] >= self._confidence:
                         if class_names[int(c)] in self._classifiers:
-                            label = "%g %s : %.2f" % (
-                                n,
-                                class_names[int(c)],
-                                s[i] * 100
-                            )
+                            label = "{:g} {} : {:.2f}".format(n, class_names[int(c)], s[i] * 100)
                             self._matches.append(label)
         self._total_matches = len(self._matches)
