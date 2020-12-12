@@ -259,9 +259,9 @@ class Model(nn.Module):
                 for _ in range(10):
                     _ = m(x)
                 dt.append((time_synchronized() - t) * 100)
-            _LOGGER.warning(
-                "{:10.1f}{:10.0f}{:10.1f}ms {:<40}".format(o, m.np, dt[-1], m.type)
-            )
+                _LOGGER.warning(
+                    "{:10.1f}{:10.0f}{:10.1f}ms {:<40}".format(o, m.np, dt[-1], m.type)
+                )
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
 
