@@ -8,9 +8,11 @@ import torch
 # Ported to PyTorch by Max deGroot (02/01/2017)
 
 def prior_box(cfg, image_size=None, device='cpu'):
-    steps = cfg['steps']
-    feature_maps = [[ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps]
-    min_sizes_ = cfg['min_sizes']
+    steps = cfg["steps"]
+    feature_maps = [
+        [ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps
+    ]
+    min_sizes_ = cfg["min_sizes"]
     anchors = []
 
     for k, f in enumerate(feature_maps):
@@ -43,9 +45,13 @@ def decode(loc, priors, variances):
         decoded bounding box predictions
     """
 
-    boxes = torch.cat((
+    boxes = torch.cat(
+        (
         priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
-        priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1])), 1)
+        priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1])
+        ),
+        1,
+    )
     boxes[:, :2] -= boxes[:, 2:] / 2
     boxes[:, 2:] += boxes[:, :2]
     return boxes
@@ -63,12 +69,16 @@ def decode_landmark(pre, priors, variances):
     Return:
         decoded landm predictions
     """
-    landms = torch.cat((priors[:, :2] + pre[:, :2] * variances[0] * priors[:, 2:],
-                        priors[:, :2] + pre[:, 2:4] * variances[0] * priors[:, 2:],
-                        priors[:, :2] + pre[:, 4:6] * variances[0] * priors[:, 2:],
-                        priors[:, :2] + pre[:, 6:8] * variances[0] * priors[:, 2:],
-                        priors[:, :2] + pre[:, 8:10] * variances[0] * priors[:, 2:],
-                        ), dim=1)
+    landms = torch.cat(
+        (
+            priors[:, :2] + pre[:, :2] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 2:4] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 4:6] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 6:8] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 8:10] * variances[0] * priors[:, 2:],
+            ), 
+        dim=1,
+    )
     return landms
 
 
