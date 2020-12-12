@@ -5,6 +5,7 @@ import math
 import torch.nn as nn
 import torch
 import logging
+import ast
 
 from . common import Conv, Bottleneck, SPP, DWConv, Focus, BottleneckCSP, Concat
 from . experimental import MixConv2d, CrossConv, C3
@@ -256,10 +257,10 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
-        m = eval(m) if isinstance(m, str) else m  # eval strings
+        m = ast.literal_eval(m) if isinstance(m, str) else m  # eval strings
         for j, a in enumerate(args):
             try:
-                args[j] = eval(a) if isinstance(a, str) else a  # eval strings
+                args[j] = ast.literal_eval(a) if isinstance(a, str) else a  # eval strings
             except:
                 pass
 
