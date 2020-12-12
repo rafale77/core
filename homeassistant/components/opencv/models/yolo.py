@@ -102,8 +102,7 @@ def model_info(model, verbose=False, imgsz=64, device="cpu"):
     n_g = sum(x.numel() for x in model.parameters() if x.requires_grad)  # number gradients
     if verbose:
         _LOGGER.warning(
-            "%5s %40s %9s %12s %20s %10s %10s"
-            % ("layer", "name", "gradient", "parameters", "shape", "mu", "sigma")
+            "{:>5} {:>40} {:>9} {:>12} {:>20} {:>10} {:>10}".format('layer', 'name', 'gradient', 'parameters', 'shape', 'mu', 'sigma')
         )
         for i, (name, p) in enumerate(model.named_parameters()):
             name = name.replace("module_list.", "")
@@ -120,10 +119,8 @@ def model_info(model, verbose=False, imgsz=64, device="cpu"):
                 )
             )
     _LOGGER.warning(
-        "Model Summary: %g layers, %g parameters, %g gradients"
-        % (len(list(model.parameters())), n_p, n_g)
+        "Model Summary: {:g} layers, {:g} parameters, {:g} gradients".format(len(list(model.parameters())), n_p, n_g)
     )
-
 
 
 class Detect(nn.Module):
@@ -131,7 +128,7 @@ class Detect(nn.Module):
     export = False  # onnx export
 
     def __init__(self, nc=80, anchors=(), ch=()):  # detection layer
-        super(Detect, self).__init__()
+        super().__init__()
         self.nc = nc  # number of classes
         self.no = nc + 5  # number of outputs per anchor
         self.nl = len(anchors)  # number of detection layers
@@ -184,7 +181,7 @@ class Model(nn.Module):
     def __init__(
         self, cfg='yolov5s.yaml', ch=3, nc=None
     ):  # model, input channels, number of classes
-        super(Model, self).__init__()
+        super().__init__()
         if isinstance(cfg, dict):
             self.yaml = cfg  # model dict
         else:  # is *.yaml
@@ -197,7 +194,7 @@ class Model(nn.Module):
         # Define model
         if nc and nc != self.yaml["nc"]:
             _LOGGER.warning(
-                "Overriding %s nc=%g with nc=%g" % (cfg, self.yaml["nc"], nc)
+                "Overriding {} nc={:g} with nc={:g}".format(cfg, self.yaml['nc'], nc)
             )
             self.yaml["nc"] = nc  # override yaml value
         self.model, self.save = parse_model(
@@ -262,10 +259,9 @@ class Model(nn.Module):
                 for _ in range(10):
                     _ = m(x)
                 dt.append((time_synchronized() - t) * 100)
-                _LOGGER.warning(
-                    "%10.1f%10.0f%10.1fms %-40s" % (o, m.np, dt[-1], m.type)
-                )
-
+            _LOGGER.warning(
+                "{:10.1f}{:10.0f}{:10.1f}ms {:<40}".format(o, m.np, dt[-1], m.type)
+            )
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
 
@@ -307,8 +303,7 @@ class Model(nn.Module):
 
 def parse_model(d, ch):  # model_dict, input_channels(3)
     _LOGGER.warning(
-        "\n%3s%18s%3s%10s  %-40s%-30s"
-        % ("", "from", "n", "params", "module", "arguments")
+        "\n{:>3}{:>18}{:>3}{:>10}  {:<40}{:<30}".format("", "from", "n", "params", "module", "arguments")
     )
     anchors, nc, gd, gw = (
         d['anchors'],
@@ -368,8 +363,8 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         m_ = nn.Sequential(*[m(*args) for _ in range(n)]) if n > 1 else m(*args)  
         t = str(m)[8:-2].replace('__main__.', '')  # module type
         np = sum([x.numel() for x in m_.parameters()])  # number params
-        m_.i, m_.f, m_.type, m_.np = i, f, t, np 
-        _LOGGER.warning('%3s%18s%3s%10.0f  %-40s%-30s' % (i, f, n, np, t, args)) 
+        m_.i, m_.f, m_.type, m_.np = i, f, t, np
+        _LOGGER.warning(f'{i:>3}{f:>18}{n:>3}{np:10.0f}  {t:<40}{args:<30}')  # print
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)
         layers.append(m_)
         ch.append(c2)
