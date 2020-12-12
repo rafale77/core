@@ -1,14 +1,12 @@
 """Support for FFmpeg."""
-import asyncio
+import logging
 import re
-from typing import Optional
 
-from haffmpeg.tools import IMAGE_JPEG, FFVersion, ImageFrame
+from haffmpeg.tools import FFVersion
 import voluptuous as vol
 
 from homeassistant.const import (
     ATTR_ENTITY_ID,
-    CONTENT_TYPE_MULTIPART,
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
@@ -19,9 +17,10 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_send,
 )
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.typing import HomeAssistantType
 
 DOMAIN = "ffmpeg"
+
+_LOGGER = logging.getLogger(__name__)
 
 SERVICE_START = "start"
 SERVICE_STOP = "stop"
@@ -89,21 +88,6 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_get_image(
-    hass: HomeAssistantType,
-    input_source: str,
-    output_format: str = IMAGE_JPEG,
-    extra_cmd: Optional[str] = None,
-):
-    """Get an image from a frame of an RTSP stream."""
-    manager = hass.data[DATA_FFMPEG]
-    ffmpeg = ImageFrame(manager.binary, loop=hass.loop)
-    image = await asyncio.shield(
-        ffmpeg.get_image(input_source, output_format=output_format, extra_cmd=extra_cmd)
-    )
-    return image
-
-
 class FFmpegManager:
     """Helper for ha-ffmpeg."""
 
@@ -138,9 +122,9 @@ class FFmpegManager:
     def ffmpeg_stream_content_type(self):
         """Return HTTP content type for ffmpeg stream."""
         if self._major_version is not None and self._major_version > 3:
-            return CONTENT_TYPE_MULTIPART.format("ffmpeg")
+            return "multipart/x-mixed-replace;boundary=ffmpeg"
 
-        return CONTENT_TYPE_MULTIPART.format("ffserver")
+        return "multipart/x-mixed-replace;boundary=ffserver"
 
 
 class FFmpegBase(Entity):
