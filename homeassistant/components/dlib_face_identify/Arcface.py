@@ -20,7 +20,7 @@ from collections import namedtuple
 import math
 
 
-##################################  Original Arcface Model ############################################################
+##################################  Original Arcface Model ######################################
 
 
 class Flatten(Module):
@@ -178,7 +178,7 @@ class Backbone(Module):
         return l2_norm(x)
 
 
-##################################  Arcface head #############################################################
+##################################  Arcface head #########################################
 
 
 class Arcface(Module):
@@ -222,7 +222,7 @@ class Arcface(Module):
         return output
 
 
-##################################  Cosface head #############################################################
+##################################  Cosface head ########################################
 
 class Am_softmax(Module):
     # implementation of additive margin softmax loss in https://arxiv.org/abs/1801.05599
