@@ -308,7 +308,7 @@ fnvhash==0.1.0
 foobot_async==0.3.2
 
 # homeassistant.components.google_translate
-gTTS-token==1.1.4
+gTTS==2.2.1
 
 # homeassistant.components.garmin_connect
 garminconnect==0.1.16
@@ -640,7 +640,7 @@ pyarlo==0.2.3
 pyatag==0.3.4.4
 
 # homeassistant.components.netatmo
-pyatmo==4.2.0
+pyatmo==4.2.1
 
 # homeassistant.components.blackbird
 pyblackbird==0.5
@@ -1131,7 +1131,7 @@ zigpy-deconz==0.11.0
 zigpy-xbee==0.13.0
 
 # homeassistant.components.zha
-zigpy-zigate==0.7.2
+zigpy-zigate==0.7.3
 
 # homeassistant.components.zha
 zigpy-znp==0.2.2
