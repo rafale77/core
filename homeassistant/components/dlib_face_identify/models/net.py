@@ -39,7 +39,7 @@ def conv_dw(inp, oup, stride, leaky=0.1):
 
 class SSH(nn.Module):
     def __init__(self, in_channel, out_channel):
-        super(SSH, self).__init__()
+        super().__init__()
         assert out_channel % 4 == 0
         leaky = 0
         if out_channel <= 64:
@@ -70,7 +70,7 @@ class SSH(nn.Module):
 
 class FPN(nn.Module):
     def __init__(self, in_channels_list, out_channels):
-        super(FPN, self).__init__()
+        super().__init__()
         leaky = 0
         if out_channels <= 64:
             leaky = 0.1
