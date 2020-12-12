@@ -25,17 +25,20 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
+
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up a OpenCV camera."""
     async_add_entities([OpenCVCamera(hass, config)])
 
+
 class Client:
     """ Maintain live RTSP feed without buffering. """
+    
     _stream = None
 
     def __init__(self, rtsp_server_uri, extra_cmd):
         """
-            rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
+        rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
         """
         self.rtsp_server_uri = rtsp_server_uri
         self.extra_cmd = extra_cmd
@@ -46,9 +49,13 @@ class Client:
 
     def open(self):
         if self.extra_cmd == "cuda":
-            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
+            os.environ[
+                "OPENCV_FFMPEG_CAPTURE_OPTIONS"
+            ] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
         if self.extra_cmd == "hevc":
-            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
+            os.environ[
+                "OPENCV_FFMPEG_CAPTURE_OPTIONS"
+            ] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
         self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
 
     def _update(self):
@@ -93,7 +100,7 @@ class OpenCVCamera(Camera):
     async def async_camera_image(self):
         """Return a still image response from the camera."""
         frame = self.client.read()
-        ret, image = cv2.imencode('.jpg', frame)
+        ret, image = cv2.imencode(".jpg", frame)
         return image.tobytes()
 
     async def handle_async_mjpeg_stream(self, request):
