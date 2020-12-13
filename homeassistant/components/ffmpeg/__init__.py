@@ -104,7 +104,6 @@ class FFmpegManager:
 
     async def async_get_version(self):
         """Return ffmpeg version."""
-
         self._version = "4.3.1"
         self._major_version = "4"
 
