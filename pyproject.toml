@@ -21,7 +21,9 @@ ignore = [
     "tests",
 ]
 disable = [
+    "R0201",  # method which could be function
     "W0703",  # general exception
+    "W1201",  # lazy logging
     "C0103",  # variable capitalization
     "C0113",  # missing-module-docstring
     "C0114",  # missing-module-docstring
