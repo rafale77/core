@@ -82,12 +82,7 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_get_image(
-    hass: str,
-    input_source: str,
-    output_format: str,
-    extra_cmd: str = None,
-):
+async def async_get_image(hass, input_source, output_format, extra_cmd):
     """Get an image from a frame of an RTSP stream."""
     return
 
