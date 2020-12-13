@@ -33,7 +33,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 class Client:
     """ Maintain live RTSP feed without buffering. """
-    
+
     _stream = None
 
     def __init__(self, rtsp_server_uri, extra_cmd):
@@ -71,6 +71,7 @@ class Client:
         (read, frame) = self._stream.retrieve()
         return frame
 
+
 class OpenCVCamera(Camera):
     """An implementation of an OpenCV camera."""
 
@@ -81,7 +82,9 @@ class OpenCVCamera(Camera):
         self._name = config.get(CONF_NAME)
         self._input = config.get(CONF_INPUT)
         self._extra_arguments = config.get(CONF_EXTRA_ARGUMENTS)
-        self.client = Client(rtsp_server_uri = self._input, extra_cmd=self._extra_arguments)
+        self.client = Client(
+            rtsp_server_uri = self._input, extra_cmd=self._extra_arguments
+        )
 
     @property
     def supported_features(self):
