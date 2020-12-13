@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# flake8: noqa
+
 
 def conv_bn(inp, oup, stride=1, leaky=0):
     return nn.Sequential(
