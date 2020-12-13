@@ -29,7 +29,7 @@ ATTR_NAME = "name"
 
 
 def get_config():
-
+    """Configuration."""
     conf = edict()
     conf.model_path = home + "/model/"
     conf.log_path = home
@@ -91,7 +91,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         self.train_faces()
 
     def faces_preprocessing(self, faces):
-
+        """Forward."""
         faces = faces.permute(0, 3, 1, 2)
         faces = faces.div(255).to(self.device)
         mu = torch.as_tensor([0.5, 0.5, 0.5], dtype=faces.dtype, device=self.device)
@@ -99,7 +99,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         return faces
 
     def train_faces(self):
-
+        """Train and load faces."""
         try:
             self.targets = torch.load(self.conf.facebank_path / "facebank.pth")
             self.names = np.load(self.conf.facebank_path / "names.npy")
