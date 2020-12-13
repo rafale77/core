@@ -150,6 +150,7 @@ class Detect(nn.Module):
 
     def __init__(self, nc=80, anchors=(), ch=()):  # detection layer
         super().__init__()
+        self.stride = []  # strides computed during build
         self.nc = nc  # number of classes
         self.no = nc + 5  # number of outputs per anchor
         self.nl = len(anchors)  # number of detection layers
