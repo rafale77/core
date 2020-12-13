@@ -1,7 +1,7 @@
 """Support for FFmpeg."""
 import asyncio
-import logging
 import re
+from typing import Optional
 
 from haffmpeg.tools import IMAGE_JPEG, FFVersion, ImageFrame
 import voluptuous as vol
