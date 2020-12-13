@@ -5,7 +5,6 @@ import torch
 from .common import Conv, DWConv
 
 
-
 class CrossConv(nn.Module):
     # Cross Convolution Downsample
     def __init__(self, c1, c2, k=3, s=1, g=1, e=1.0, shortcut=False):
@@ -51,7 +50,7 @@ class Sum(nn.Module):
         self.iter = range(n - 1)  # iter object
         if weight:
             self.w = nn.Parameter(
-                -torch.arange(1., n) / 2, requires_grad=True
+                -torch.arange(1.0, n) / 2, requires_grad=True
             )  # layer weights
 
     def forward(self, x):
@@ -89,7 +88,7 @@ class GhostBottleneck(nn.Module):
         self.conv = nn.Sequential(
             GhostConv(c1, c_, 1, 1),  # pw
             DWConv(c_, c_, k, s, act=False) if s == 2 else nn.Identity(),  # dw
-            GhostConv(c_, c2, 1, 1, act=False)
+            GhostConv(c_, c2, 1, 1, act=False),
         )  # pw-linear
         self.shortcut = (
             nn.Sequential(
