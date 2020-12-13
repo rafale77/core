@@ -1,16 +1,27 @@
+import ast
 from copy import deepcopy
-from pathlib import Path
 import logging
 import math
-import ast
+from pathlib import Path
 import time
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .common import Conv, Bottleneck, SPP, DWConv, Focus, BottleneckCSP, BottleneckCSP2, VoVCSP, Concat, SPPCSP
-from .experimental import MixConv2d, CrossConv, C3
+from .common import (
+    SPP,
+    SPPCSP,
+    Bottleneck,
+    BottleneckCSP,
+    BottleneckCSP2,
+    Concat,
+    Conv,
+    DWConv,
+    Focus,
+    VoVCSP,
+)
+from .experimental import C3, CrossConv, MixConv2d
 
 _LOGGER = logging.getLogger(__name__)
 
