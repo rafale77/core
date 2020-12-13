@@ -71,7 +71,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
     # Settings
     min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
     max_det = 300  # maximum number of detections per image
-    multi_label = False # nc > 1  # multiple labels per box (adds 0.5ms/img)
+    multi_label = False  # nc > 1  # multiple labels per box (adds 0.5ms/img)
 
     output = [None] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
