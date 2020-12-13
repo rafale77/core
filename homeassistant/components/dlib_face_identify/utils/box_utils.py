@@ -1,3 +1,4 @@
+"""Utilities for Retinaface."""
 from itertools import product as product
 from math import ceil
 
@@ -6,9 +7,10 @@ import torch
 # Original author: Francisco Massa:
 # https://github.com/fmassa/object-detection.torch
 # Ported to PyTorch by Max deGroot (02/01/2017)
-
+# flake8: noqa
 
 def prior_box(cfg, image_size=None, device="cpu"):
+    """Boxes for Face."""
     steps = cfg["steps"]
     feature_maps = [
         [ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps
