@@ -1,17 +1,17 @@
-import torch
-import cv2
-import logging
-import numpy as np
-
-from skimage import transform
 from collections import OrderedDict
+import logging
+
+import cv2
+import numpy as np
+from skimage import transform
+import torch
 from torch.cuda.amp import autocast
+
+from .models.retinaface import RetinaFace
+from .utils.box_utils import decode, decode_landmark, prior_box, nms
 
 # from torch2trt import torch2trt
 # from torch2trt import TRTModule
-
-from .utils.box_utils import decode, decode_landmark, prior_box, nms
-from .models.retinaface import RetinaFace
 
 _LOGGER = logging.getLogger(__name__)
 
