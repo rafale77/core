@@ -495,10 +495,12 @@ nuheat==0.3.0
 # homeassistant.components.numato
 numato-gpio==0.8.0
 
+# homeassistant.components.dlib_face_identify
 # homeassistant.components.iqvia
+# homeassistant.components.opencv
 # homeassistant.components.tensorflow
 # homeassistant.components.trend
-numpy==1.19.2
+numpy==1.19.4
 
 # homeassistant.components.google
 oauth2client==4.0.0
