@@ -66,7 +66,7 @@ class Client:
 
     def read(self):
         """Retrieve most recent frame and decode."""
-        (read, frame) = self._stream.retrieve()
+        (_, frame) = self._stream.retrieve()
         return frame
 
 
@@ -101,7 +101,7 @@ class OpenCVCamera(Camera):
     async def async_camera_image(self):
         """Return a still image response from the camera."""
         frame = self.client.read()
-        ret, image = cv2.imencode(".jpg", frame)
+        _, image = cv2.imencode(".jpg", frame)
         return image.tobytes()
 
     async def handle_async_mjpeg_stream(self, request):
