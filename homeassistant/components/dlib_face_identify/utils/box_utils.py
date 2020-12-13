@@ -9,6 +9,7 @@ import torch
 # Ported to PyTorch by Max deGroot (02/01/2017)
 # flake8: noqa
 
+
 def prior_box(cfg, image_size=None, device="cpu"):
     """Boxes for Face."""
     steps = cfg["steps"]
