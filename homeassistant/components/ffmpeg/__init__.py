@@ -1,5 +1,4 @@
 """Support for FFmpeg."""
-import asyncio
 import re
 from typing import Optional
 
@@ -8,7 +7,6 @@ import voluptuous as vol
 
 from homeassistant.const import (
     ATTR_ENTITY_ID,
-    CONTENT_TYPE_MULTIPART,
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
