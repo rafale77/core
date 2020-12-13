@@ -60,21 +60,15 @@ def scale_img(img, ratio=1.0, same_shape=False):  # img(16,3,256,416), r=ratio
     # scales img(bs,3,y,x) by ratio
     if ratio == 1.0:
         return img
-    else:
-        h, w = img.shape[2:]
-        s = (int(h * ratio), int(w * ratio))  # new size
-        img = F.interpolate(img, size=s, mode="bilinear", align_corners=False)  # resize
-        if not same_shape:  # pad/crop img
-            gs = 32  # (pixels) grid size
-            h, w = [math.ceil(x * ratio / gs) * gs for x in (h, w)]
-        return F.pad(
-            img, [0, w - s[1], 0, h - s[0]], value=0.447
-        )  # value = imagenet mean
-
-
-def time_synchronized():
-    torch.cuda.synchronize() if torch.cuda.is_available() else None
-    return time.time()
+    h, w = img.shape[2:]
+    s = (int(h * ratio), int(w * ratio))  # new size
+    img = F.interpolate(img, size=s, mode="bilinear", align_corners=False)  # resize
+    if not same_shape:  # pad/crop img
+        gs = 32  # (pixels) grid size
+        h, w = [math.ceil(x * ratio / gs) * gs for x in (h, w)]
+    return F.pad(
+        img, [0, w - s[1], 0, h - s[0]], value=0.447
+    )  # value = imagenet mean
 
 
 def fuse_conv_and_bn(conv, bn):
@@ -238,7 +232,7 @@ class Model(nn.Module):
         initialize_weights(self)
         self.info()
 
-    def forward(self, x, augment=False, profile=False):
+    def forward(self, x, augment=False):
         if augment:
             img_size = x.shape[-2:]  # height, width
             s = [1, 0.83, 0.67]  # scales
@@ -254,40 +248,20 @@ class Model(nn.Module):
                     yi[..., 0] = img_size[1] - yi[..., 0]  # de-flip lr
                 y.append(yi)
             return torch.cat(y, 1), None  # augmented inference, train
-        else:
-            return self.forward_once(x, profile)  # single-scale inference, train
+        return self.forward_once(x)  # single-scale inference, train
 
-    def forward_once(self, x, profile=False):
-        y, dt = [], []  # outputs
+    def forward_once(self, x):
+        y = []  # outputs
         for m in self.model:
             if m.f != -1:  # if not from previous layer
                 x = (
                     y[m.f]
                     if isinstance(m.f, int)
                     else [x if j == -1 else y[j] for j in m.f]
-                )  # from earlier layers
-
-            if profile:
-                try:
-                    import thop
-
-                    o = (
-                        thop.profile(m, inputs=(x,), verbose=False)[0] / 1e9 * 2
-                    )  # FLOPS
-                except Exception:
-                    o = 0
-                t = time_synchronized()
-                for _ in range(10):
-                    _ = m(x)
-                dt.append((time_synchronized() - t) * 100)
-                _LOGGER.warning(
-                    "{:10.1f}{:10.0f}{:10.1f}ms {:<40}".format(o, m.np, dt[-1], m.type)
-                )
+                )  # from earlier layers    
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
 
-        if profile:
-            _LOGGER.warning("%.1fms total" % sum(dt))
         return x
 
     def _initialize_biases(self, cf=None):
@@ -314,7 +288,7 @@ class Model(nn.Module):
     def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
         _LOGGER.warning("Fusing layers... ")
         for m in self.model.modules():
-            if type(m) is Conv:
+            if isinstance(m) is Conv:
                 m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
                 m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
                 delattr(m, "bn")  # remove batchnorm
