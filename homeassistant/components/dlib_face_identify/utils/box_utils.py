@@ -3,7 +3,6 @@ from math import ceil
 
 import torch
 
-
 # Original author: Francisco Massa:
 # https://github.com/fmassa/object-detection.torch
 # Ported to PyTorch by Max deGroot (02/01/2017)
