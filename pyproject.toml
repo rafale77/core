@@ -96,6 +96,7 @@ score = false
 ignored-classes = [
     "_CountingAttr",  # for attrs
 ]
+generated-members = numpy.*, torch.*
 
 [tool.pylint.FORMAT]
 expected-line-ending-format = "LF"
