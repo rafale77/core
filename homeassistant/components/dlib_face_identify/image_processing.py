@@ -29,7 +29,7 @@ ATTR_NAME = "name"
 
 
 def get_config():
-    """Configuration."""
+    """Default configuration settings."""
     conf = edict()
     conf.model_path = home + "/model/"
     conf.log_path = home
