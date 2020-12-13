@@ -10,6 +10,7 @@ from torch.cuda.amp import autocast
 from .models.retinaface import RetinaFace
 from .utils.box_utils import decode, decode_landmark, nms, prior_box
 
+# flake8: noqa
 # from torch2trt import torch2trt
 # from torch2trt import TRTModule
 
