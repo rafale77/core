@@ -6,6 +6,7 @@ import numpy as np
 from skimage import transform
 from collections import OrderedDict
 from torch.cuda.amp import autocast
+
 # from torch2trt import torch2trt
 # from torch2trt import TRTModule
 
@@ -28,7 +29,7 @@ cfg = {
     "decay2": 90,
     "image_size": 840,
     "pretrain": True,
-    "return_layers": {'layer2': 1, 'layer3': 2, 'layer4': 3},
+    "return_layers": {"layer2": 1, "layer3": 2, "layer4": 3},
     "in_channel": 256,
     "out_channel": 256,
 }
@@ -67,7 +68,7 @@ class FaceDetector:
     def __init__(
         self,
         weight_path,
-        device='cpu',
+        device="cpu",
         confidence_threshold=0.99,
         top_k=5000,
         nms_threshold=0.4,
@@ -84,7 +85,7 @@ class FaceDetector:
         """
         # setting for model
         # model = TRTModule()
-        # model.load_state_dict(torch.load('/home/anhman/.homeassistant/model/retina_trt.pth'))
+        # model.load_state_dict(torch.load("/home/anhman/.homeassistant/model/retina_trt.pth"))
         state_dict = torch.load(weight_path)
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
