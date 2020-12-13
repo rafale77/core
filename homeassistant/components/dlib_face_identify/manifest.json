@@ -2,6 +2,6 @@
   "domain": "dlib_face_identify",
   "name": "Dlib Face Identify",
   "documentation": "https://www.home-assistant.io/integrations/dlib_face_identify",
-  "requirements": ["torch==1.7.1", "torchvision==0.8.2", "opencv-python-headless==4.4.0.46"],
+  "requirements": ["numpy==1.19.4", "torch==1.7.1", "torchvision==0.8.2", "opencv-python-headless==4.4.0.46"],
   "codeowners": []
 }
