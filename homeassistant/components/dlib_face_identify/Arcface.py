@@ -1,19 +1,19 @@
 from torch.nn import (
-    Linear,
-    Conv2d,
+    AdaptiveAvgPool2d,
+    AvgPool2d,
     BatchNorm1d,
     BatchNorm2d,
-    PReLU,
-    ReLU,
-    Sigmoid,
-    Dropout2d,
+    Conv2d,
     Dropout,
-    AvgPool2d,
+    Dropout2d,
+    Linear,
     MaxPool2d,
-    AdaptiveAvgPool2d,
-    Sequential,
     Module,
     Parameter,
+    PReLU,
+    ReLU,
+    Sequential,
+    Sigmoid,
 )
 import torch
 from collections import namedtuple
@@ -69,9 +69,9 @@ class bottleneck_IR(Module):
             )
         self.res_layer = Sequential(
             BatchNorm2d(in_channel),
-            Conv2d(in_channel, depth, (3, 3), (1, 1), 1, bias=False), 
+            Conv2d(in_channel, depth, (3, 3), (1, 1), 1, bias=False),
             PReLU(depth),
-            Conv2d(depth, depth, (3, 3), stride, 1, bias=False), 
+            Conv2d(depth, depth, (3, 3), stride, 1, bias=False),
             BatchNorm2d(depth),
         )
 
@@ -88,7 +88,7 @@ class bottleneck_IR_SE(Module):
             self.shortcut_layer = MaxPool2d(1, stride)
         else:
             self.shortcut_layer = Sequential(
-                Conv2d(in_channel, depth, (1, 1), stride, bias=False), 
+                Conv2d(in_channel, depth, (1, 1), stride, bias=False),
                 BatchNorm2d(depth),
             )
         self.res_layer = Sequential(
@@ -153,7 +153,7 @@ class Backbone(Module):
             unit_module = bottleneck_IR_SE
         self.input_layer = Sequential(
             Conv2d(3, 64, (3, 3), 1, 1, bias=False), BatchNorm2d(64), PReLU(64)
-                                     )
+        )
         self.output_layer = Sequential(
             BatchNorm2d(512),
             Dropout(drop_ratio),
@@ -224,6 +224,7 @@ class Arcface(Module):
 
 ##################################  Cosface head ########################################
 
+
 class Am_softmax(Module):
     # implementation of additive margin softmax loss in https://arxiv.org/abs/1801.05599
     def __init__(self, embedding_size=512, classnum=51332):
@@ -246,5 +247,5 @@ class Am_softmax(Module):
         index = index.byte()
         output = cos_theta * 1.0
         output[index] = phi[index]  # only change the correct predicted output
-        output *= self.s  # scale up in order to make softmax work, first introduced in normface
+        output *= self.s  # scale up in order to make softmax work
         return output
