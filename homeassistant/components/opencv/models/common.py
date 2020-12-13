@@ -1,7 +1,8 @@
 # This file contains modules common to various models
-import torch.nn as nn
-import torch
 import math
+
+import torch
+import torch.nn as nn
 
 try:
     from mish_cuda import MishCuda as Mish
