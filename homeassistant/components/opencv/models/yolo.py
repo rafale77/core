@@ -25,6 +25,8 @@ from .experimental import C3, CrossConv, MixConv2d
 
 _LOGGER = logging.getLogger(__name__)
 
+# flake8: noqa
+
 
 def make_divisible(x, divisor):
     # Returns x evenly divisble by divisor
