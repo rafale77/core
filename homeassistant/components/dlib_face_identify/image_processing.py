@@ -24,7 +24,7 @@ from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
-home = str(Path.home())+"/.homeassistant/"
+home = str(Path.home()) + "/.homeassistant/"
 
 ATTR_NAME = "name"
 
