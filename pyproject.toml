@@ -32,6 +32,8 @@ extension-pkg-whitelist = [
     "ciso8601",
     "cv2",
     "torch",
+    "mish-cuda",
+    "thop",
 ]
 
 [tool.pylint.BASIC]
