@@ -1,5 +1,4 @@
 """Support for FFmpeg."""
-import asyncio
 import re
 from typing import Optional
 
