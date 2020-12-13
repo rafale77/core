@@ -85,7 +85,7 @@ def fuse_conv_and_bn(conv, bn):
         # prepare spatial bias
         b_conv = (
             torch.zeros(
-                conv.weight.size(0), dtype=torch.float16 ,device=conv.weight.device
+                conv.weight.size(0), dtype=torch.float16, device=conv.weight.device
             )
             if conv.bias is None
             else conv.bias
@@ -169,7 +169,9 @@ class Detect(nn.Module):
             y = x[i].sigmoid()
             y[..., 0:2] = (
                 y[..., 0:2] * 2.0 - 0.5 + self.grid[i].to(x[i].device)
-            ) * self.stride[i]  # xy
+            ) * self.stride[
+                i
+            ]  # xy
             y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
             z.append(y.view(bs, -1, self.no))
 
@@ -279,7 +281,11 @@ class Model(nn.Module):
         for mi, s in zip(m.m, m.stride):  # from
             b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
             b[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
-            b[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+            b[:, 5:] += (
+                math.log(0.6 / (m.nc - 0.99)) 
+                if cf is None 
+                else torch.log(cf / cf.sum())
+            )  # cls
             mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
     def _print_biases(self):
@@ -330,7 +336,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         m = ast.literal_eval(m) if isinstance(m, str) else m  # eval strings
         for j, a in enumerate(args):
             try:
-                args[j] = ast.literal_eval(a) if isinstance(a, str) else a  # eval strings
+                args[j] = ast.literal_eval(a) if isinstance(a, str) else a
             except:
                 pass
 
