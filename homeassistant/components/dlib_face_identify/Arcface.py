@@ -23,13 +23,13 @@ from torch.nn import (
 
 
 class Flatten(Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
+    def forward(self, inpt):
+        return input.view(inpt.size(0), -1)
 
 
-def l2_norm(input, axis=1):
-    norm = torch.norm(input, 2, axis, True)
-    output = torch.div(input, norm)
+def l2_norm(inpt, axis=1):
+    norm = torch.norm(inpt, 2, axis, True)
+    output = torch.div(inpt, norm)
     return output
 
 
