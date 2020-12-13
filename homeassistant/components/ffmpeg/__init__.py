@@ -1,14 +1,10 @@
 """Support for FFmpeg."""
-import asyncio
-import re
 from typing import Optional
 
-from haffmpeg.tools import IMAGE_JPEG, FFVersion, ImageFrame
 import voluptuous as vol
 
 from homeassistant.const import (
     ATTR_ENTITY_ID,
-    CONTENT_TYPE_MULTIPART,
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
@@ -89,21 +85,6 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_get_image(
-    hass: HomeAssistantType,
-    input_source: str,
-    output_format: str = IMAGE_JPEG,
-    extra_cmd: Optional[str] = None,
-):
-    """Get an image from a frame of an RTSP stream."""
-    manager = hass.data[DATA_FFMPEG]
-    ffmpeg = ImageFrame(manager.binary, loop=hass.loop)
-    image = await asyncio.shield(
-        ffmpeg.get_image(input_source, output_format=output_format, extra_cmd=extra_cmd)
-    )
-    return image
-
-
 class FFmpegManager:
     """Helper for ha-ffmpeg."""
 
@@ -122,15 +103,8 @@ class FFmpegManager:
 
     async def async_get_version(self):
         """Return ffmpeg version."""
-
-        ffversion = FFVersion(self._bin, self.hass.loop)
-        self._version = await ffversion.get_version()
-
-        self._major_version = None
-        if self._version is not None:
-            result = re.search(r"(\d+)\.", self._version)
-            if result is not None:
-                self._major_version = int(result.group(1))
+        self._version = "4.3.1"
+        self._major_version = "4"
 
         return self._version, self._major_version
 
@@ -138,9 +112,9 @@ class FFmpegManager:
     def ffmpeg_stream_content_type(self):
         """Return HTTP content type for ffmpeg stream."""
         if self._major_version is not None and self._major_version > 3:
-            return CONTENT_TYPE_MULTIPART.format("ffmpeg")
+            return "multipart/x-mixed-replace;boundary=ffmpeg"
 
-        return CONTENT_TYPE_MULTIPART.format("ffserver")
+        return "multipart/x-mixed-replace;boundary=ffserver"
 
 
 class FFmpegBase(Entity):
