@@ -1,17 +1,19 @@
 """Component that will process object detection with opencv."""
 import logging
+from pathlib import Path
+import sys
+
 import cv2
 import torch
 
 # pylint: disable=import-error
 import voluptuous as vol
-from pathlib import Path
-import sys
+
 
 
 from homeassistant.components.image_processing import (
-    CONF_ENTITY_ID,
     CONF_CONFIDENCE,
+    CONF_ENTITY_ID,
     CONF_NAME,
     CONF_SOURCE,
     PLATFORM_SCHEMA,
