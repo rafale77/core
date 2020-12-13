@@ -64,7 +64,6 @@ def get_reference_facial_points(output_size=(112, 112)):
 
 
 class FaceDetector:
-
     def __init__(
         self,
         weight_path,
