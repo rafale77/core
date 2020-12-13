@@ -66,9 +66,7 @@ def scale_img(img, ratio=1.0, same_shape=False):  # img(16,3,256,416), r=ratio
     if not same_shape:  # pad/crop img
         gs = 32  # (pixels) grid size
         h, w = [math.ceil(x * ratio / gs) * gs for x in (h, w)]
-    return F.pad(
-        img, [0, w - s[1], 0, h - s[0]], value=0.447
-    )  # value = imagenet mean
+    return F.pad(img, [0, w - s[1], 0, h - s[0]], value=0.447)  # value = imagenet mean
 
 
 def fuse_conv_and_bn(conv, bn):
@@ -258,7 +256,7 @@ class Model(nn.Module):
                     y[m.f]
                     if isinstance(m.f, int)
                     else [x if j == -1 else y[j] for j in m.f]
-                )  # from earlier layers    
+                )  # from earlier layers
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
 
