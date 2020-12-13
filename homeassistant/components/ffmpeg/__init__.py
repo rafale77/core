@@ -1,5 +1,4 @@
 """Support for FFmpeg."""
-import re
 from typing import Optional
 
 import voluptuous as vol
