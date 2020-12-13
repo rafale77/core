@@ -1,5 +1,4 @@
 """Support for Cameras with OpenCV as decoder."""
-import asyncio
 import logging
 import os
 
