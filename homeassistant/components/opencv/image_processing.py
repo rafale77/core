@@ -34,7 +34,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 imgsz = int(672)
 sys.path.insert(
     0,
-    str(Path.home()) + ".local/lib/python3.7/site-packages/homeassistant/components/opencv/"
+    str(Path.home()) + "/.local/lib/python3.7/site-packages/homeassistant/components/opencv/"
 )
 model = torch.load(home + "yolov4l-mish.pt", device)["model"].fuse().eval().half()
 with open(home + "cococlasses.txt") as f:
