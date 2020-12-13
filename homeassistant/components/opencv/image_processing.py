@@ -116,10 +116,10 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
     return output
 
 
-def preprocessor(img_raw, w, h, device):
+def preprocessor(img_raw, w, h, dev):
     """Image conversion."""
     img_raw = cv2.resize(img_raw, (w, h))
-    img = torch.tensor(img_raw, dtype=torch.float16).div(255).to(device)
+    img = torch.tensor(img_raw, dtype=torch.float16).div(255).to(dev)
     img = img.permute(2, 0, 1).unsqueeze(0)
     return img
 
@@ -189,7 +189,7 @@ class OpenCVImageProcessor(ImageProcessingEntity):
         pred = non_max_suppression(pred, CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
         self._matches = []
         for i, det in enumerate(pred):  # detections per image
-            if det is not None and len(det):
+            if det is not None and len(det) > 0:
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s = det[:, 4]
