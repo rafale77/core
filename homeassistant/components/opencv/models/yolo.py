@@ -4,11 +4,11 @@ import logging
 import math
 from pathlib import Path
 import time
-import yaml  # for torch hub
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import yaml  # for torch hub
 
 from .common import (
     SPP,
