@@ -10,7 +10,6 @@ from .Retinaface import FaceDetector
 from .Arcface import Backbone
 
 # pylint: disable=import-error
-import voluptuous as vol
 from pathlib import Path
 import os
 
@@ -21,7 +20,6 @@ from homeassistant.components.image_processing import (
     ImageProcessingFaceEntity,
 )
 from homeassistant.core import split_entity_id
-import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
@@ -82,7 +80,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             self.arcmodel.load_state_dict(
                 torch.load(f"{self.conf.model_path}/model_ir_se50.pth")
             )
-        except OSError as e:
+        except OSError:
             _LOGGER.warning("Arcface weight does not exist")
         self.arcmodel.eval()
         if name:
@@ -105,7 +103,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             self.targets = torch.load(self.conf.facebank_path / "facebank.pth")
             self.names = np.load(self.conf.facebank_path / "names.npy")
             _LOGGER.warning("Faces Loaded")
-        except:
+        except Exception:
             _LOGGER.warning("Model not trained, retraining...")
             faces = []
             names = ["Unknown"]
