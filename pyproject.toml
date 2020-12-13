@@ -22,9 +22,10 @@ ignore = [
 ]
 disable = [
     "C0103",  # variable capitalization
-    "C0113",
+    "C0113",  # missing-module-docstring
     "C0114",  # missing-module-docstring
-    "C0116",
+    "C0115",  # missing-module-docstring
+    "C0116",  # missing-module-docstring
     "E1102",  # torch.tensor
 ]    
 # Use a conservative default here; 2 should speed up most setups and not hurt
