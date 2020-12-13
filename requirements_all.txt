@@ -583,7 +583,6 @@ eternalegypt==0.0.12
 evohome-async==0.3.5.post1
 
 # homeassistant.components.dlib_face_detect
-# homeassistant.components.dlib_face_identify
 # face_recognition==1.2.3
 
 # homeassistant.components.fastdotcom
@@ -1044,9 +1043,6 @@ onvif-zeep-async==1.0.0
 
 # homeassistant.components.opengarage
 open-garage==0.1.4
-
-# homeassistant.components.opencv
-# opencv-python-headless==4.3.0.36
 
 # homeassistant.components.openerz
 openerz-api==0.1.0
