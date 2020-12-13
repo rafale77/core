@@ -106,7 +106,6 @@ class FaceDetector:
         self.trans = transform.SimilarityTransform()
         self.out_size = face_size
         self.ref_pts = get_reference_facial_points(output_size=face_size)
-        return
 
     def preprocessor(self, img_raw):
         img = torch.tensor(img_raw, dtype=torch.float32).to(self.device)
