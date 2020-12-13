@@ -71,7 +71,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         super().__init__()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.face_detector = FaceDetector(
-            weight_path = home + "model/Resnet50_Final.pth", device=self.device
+            weight_path=home + "model/Resnet50_Final.pth", device=self.device
         )
         self._camera = camera_entity
         self.conf = get_config()
