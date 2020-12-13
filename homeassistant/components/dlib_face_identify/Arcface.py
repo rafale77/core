@@ -1,11 +1,9 @@
 from torch.nn import (
     AdaptiveAvgPool2d,
-    AvgPool2d,
     BatchNorm1d,
     BatchNorm2d,
     Conv2d,
     Dropout,
-    Dropout2d,
     Linear,
     MaxPool2d,
     Module,
@@ -20,7 +18,7 @@ from collections import namedtuple
 import math
 
 
-##################################  Original Arcface Model ######################################
+#  Original Arcface Model ######################################
 
 
 class Flatten(Module):
@@ -178,7 +176,7 @@ class Backbone(Module):
         return l2_norm(x)
 
 
-##################################  Arcface head #########################################
+#  Arcface head #########################################
 
 
 class Arcface(Module):
@@ -222,7 +220,7 @@ class Arcface(Module):
         return output
 
 
-##################################  Cosface head ########################################
+#  Cosface head ########################################
 
 
 class Am_softmax(Module):
