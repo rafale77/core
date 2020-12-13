@@ -22,6 +22,7 @@ ignore = [
 ]
 disable = [
     "R0201",  # method which could be function
+    "W0212",  # protected access
     "W0703",  # general exception
     "W1201",  # lazy logging
     "C0103",  # variable capitalization
