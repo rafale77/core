@@ -8,7 +8,7 @@ import torch
 from torch.cuda.amp import autocast
 
 from .models.retinaface import RetinaFace
-from .utils.box_utils import decode, decode_landmark, prior_box, nms
+from .utils.box_utils import decode, decode_landmark, nms, prior_box
 
 # from torch2trt import torch2trt
 # from torch2trt import TRTModule
