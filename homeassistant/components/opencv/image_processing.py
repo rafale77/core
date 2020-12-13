@@ -9,8 +9,6 @@ import torch
 # pylint: disable=import-error
 import voluptuous as vol
 
-
-
 from homeassistant.components.image_processing import (
     CONF_CONFIDENCE,
     CONF_ENTITY_ID,
@@ -19,7 +17,6 @@ from homeassistant.components.image_processing import (
     PLATFORM_SCHEMA,
     ImageProcessingEntity,
 )
-
 from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
 
