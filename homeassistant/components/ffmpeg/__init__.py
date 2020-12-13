@@ -122,7 +122,7 @@ class FFmpegManager:
     async def async_get_version(self):
         """Return ffmpeg version."""
 
-        ffversion = FFVersion(self._bin)
+        ffversion = FFVersion(self._bin, self.hass.loop)
         self._version = await ffversion.get_version()
 
         self._major_version = None
