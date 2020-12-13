@@ -24,7 +24,7 @@ from torch.nn import (
 
 class Flatten(Module):
     def forward(self, inpt):
-        return input.view(inpt.size(0), -1)
+        return inpt.view(inpt.size(0), -1)
 
 
 def l2_norm(inpt, axis=1):
