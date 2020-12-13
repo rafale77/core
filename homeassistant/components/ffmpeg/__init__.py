@@ -1,12 +1,14 @@
 """Support for FFmpeg."""
+import asyncio
 import logging
 import re
 
-from haffmpeg.tools import FFVersion
+from haffmpeg.tools import IMAGE_JPEG, FFVersion, ImageFrame
 import voluptuous as vol
 
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    CONTENT_TYPE_MULTIPART,
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
@@ -17,6 +19,7 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_send,
 )
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.typing import HomeAssistantType
 
 DOMAIN = "ffmpeg"
 
@@ -87,6 +90,19 @@ async def async_setup(hass, config):
     hass.data[DATA_FFMPEG] = manager
     return True
 
+async def async_get_image(
+    hass: HomeAssistantType,
+    input_source: str,
+    output_format: str = IMAGE_JPEG,
+    extra_cmd: Optional[str] = None,
+):
+    """Get an image from a frame of an RTSP stream."""
+    manager = hass.data[DATA_FFMPEG]
+    ffmpeg = ImageFrame(manager.binary)
+    image = await asyncio.shield(
+        ffmpeg.get_image(input_source, output_format=output_format, extra_cmd=extra_cmd)
+    )
+    return image
 
 class FFmpegManager:
     """Helper for ha-ffmpeg."""
