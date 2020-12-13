@@ -4,6 +4,7 @@ import logging
 import math
 from pathlib import Path
 import time
+import yaml  # for torch hub
 
 import torch
 import torch.nn as nn
@@ -191,14 +192,12 @@ class Detect(nn.Module):
 
 class Model(nn.Module):
     def __init__(
-        self, cfg="yolov5s.yaml", ch=3, nc=None
+        self, cfg="yolov4l-mish.yaml", ch=3, nc=None
     ):  # model, input channels, number of classes
         super().__init__()
         if isinstance(cfg, dict):
             self.yaml = cfg  # model dict
         else:  # is *.yaml
-            import yaml  # for torch hub
-
             self.yaml_file = Path(cfg).name
             with open(cfg) as f:
                 self.yaml = yaml.load(f, Loader=yaml.FullLoader)  # model dict
