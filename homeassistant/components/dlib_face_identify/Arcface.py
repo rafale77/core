@@ -1,3 +1,7 @@
+from collections import namedtuple
+import math
+
+import torch
 from torch.nn import (
     AdaptiveAvgPool2d,
     BatchNorm1d,
@@ -13,10 +17,6 @@ from torch.nn import (
     Sequential,
     Sigmoid,
 )
-import torch
-from collections import namedtuple
-import math
-
 
 #  Original Arcface Model ######################################
 
