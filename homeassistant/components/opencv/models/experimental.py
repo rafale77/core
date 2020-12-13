@@ -5,6 +5,8 @@ import torch.nn as nn
 
 from .common import Conv, DWConv
 
+# flake8: noqa
+
 
 class CrossConv(nn.Module):
     # Cross Convolution Downsample
