@@ -12,6 +12,8 @@ except Exception:
         def forward(self, x):
             return x * torch.nn.functional.softplus(x).tanh()
 
+# flake8: noqa
+
 
 def autopad(k, p=None):  # kernel, padding
     # Pad to 'same'
