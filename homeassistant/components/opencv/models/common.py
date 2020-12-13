@@ -5,7 +5,7 @@ import math
 
 try:
     from mish_cuda import MishCuda as Mish
-except:
+except Exception:
 
     class Mish(nn.Module):  # https://github.com/digantamisra98/Mish
         def forward(self, x):
