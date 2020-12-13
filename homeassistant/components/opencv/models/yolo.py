@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .common import Conv, Bottleneck, SPP, DWConv, Focus, BottleneckCSP, Concat
+from .common import Conv, Bottleneck, SPP, DWConv, Focus, BottleneckCSP, BottleneckCSP2, VoVCSP, Concat, SPPCSP
 from .experimental import MixConv2d, CrossConv, C3
 
 _LOGGER = logging.getLogger(__name__)
@@ -231,7 +231,7 @@ class Model(nn.Module):
             f = [None, 3, None]  # flips (2-ud, 3-lr)
             y = []  # outputs
             for si, fi in zip(s, f):
-                xi = torch_utils.scale_img(x.flip(fi) if fi else x, si)
+                xi = scale_img(x.flip(fi) if fi else x, si)
                 yi = self.forward_once(xi)[0]  # forward
                 yi[..., :4] /= si  # de-scale
                 if fi == 2:
@@ -337,7 +337,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         for j, a in enumerate(args):
             try:
                 args[j] = ast.literal_eval(a) if isinstance(a, str) else a
-            except:
+            except Exception:
                 pass
 
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
