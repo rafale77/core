@@ -90,6 +90,7 @@ async def async_setup(hass, config):
     hass.data[DATA_FFMPEG] = manager
     return True
 
+
 async def async_get_image(
     hass: HomeAssistantType,
     input_source: str,
@@ -103,6 +104,7 @@ async def async_get_image(
         ffmpeg.get_image(input_source, output_format=output_format, extra_cmd=extra_cmd)
     )
     return image
+
 
 class FFmpegManager:
     """Helper for ha-ffmpeg."""
