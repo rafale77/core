@@ -23,8 +23,6 @@ from homeassistant.helpers.typing import HomeAssistantType
 
 DOMAIN = "ffmpeg"
 
-_LOGGER = logging.getLogger(__name__)
-
 SERVICE_START = "start"
 SERVICE_STOP = "stop"
 SERVICE_RESTART = "restart"
