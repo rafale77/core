@@ -1,17 +1,15 @@
 """Component that will help set the Dlib face detect processing."""
 import logging
-import numpy as np
-from easydict import EasyDict as edict
-import cv2
-import torch
-from torch.cuda.amp import autocast
-
-from .Retinaface import FaceDetector
-from .Arcface import Backbone
+import os
 
 # pylint: disable=import-error
 from pathlib import Path
-import os
+
+import cv2
+from easydict import EasyDict as edict
+import numpy as np
+import torch
+from torch.cuda.amp import autocast
 
 from homeassistant.components.image_processing import (
     CONF_ENTITY_ID,
@@ -20,6 +18,9 @@ from homeassistant.components.image_processing import (
     ImageProcessingFaceEntity,
 )
 from homeassistant.core import split_entity_id
+
+from .Retinaface import FaceDetector
+from .Arcface import Backbone
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
