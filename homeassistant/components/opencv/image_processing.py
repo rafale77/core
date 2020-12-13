@@ -6,7 +6,6 @@ import torch
 # pylint: disable=import-error
 import voluptuous as vol
 from pathlib import Path
-import os
 import sys
 
 
@@ -71,7 +70,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
     # Settings
     min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
     max_det = 300  # maximum number of detections per image
-    multi_label = False  # nc > 1  # multiple labels per box (adds 0.5ms/img)
+    multi_label = nc > 1  # multiple labels per box (adds 0.5ms/img)
 
     output = [None] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
@@ -90,8 +89,12 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
         box = xywh2xyxy(x[:, :4])
 
         # Detections matrix nx6 (xyxy, conf, cls)
-        conf, j = x[:, 5:].max(1, keepdim=True)
-        x = torch.cat((box, conf, j.float()), 1)[conf.view(-1) > conf_thres]
+        if multi_label:
+            i, j = (x[:, 5:] > conf_thres).nonzero(as_tuple=False).T
+            x = torch.cat((box[i], x[i, j + 5, None], j[:, None].float()), 1)
+        else:  # best class only
+            conf, j = x[:, 5:].max(1, keepdim=True)
+            x = torch.cat((box, conf, j.float()), 1)[conf.view(-1) > conf_thres]
 
         # Filter by class
         if classes:
