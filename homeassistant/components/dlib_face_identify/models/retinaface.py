@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models._utils as _utils
 
-from .net import FPN as FPN
-from .net import SSH as SSH
+from .net import FPN as FPN, SSH as SSH
 
 
 class ClassHead(nn.Module):
