@@ -260,7 +260,7 @@ class Model(nn.Module):
                     o = (
                         thop.profile(m, inputs=(x,), verbose=False)[0] / 1e9 * 2
                     )  # FLOPS
-                except:
+                except Exception:
                     o = 0
                 t = time_synchronized()
                 for _ in range(10):
