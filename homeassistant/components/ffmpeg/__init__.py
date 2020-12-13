@@ -1,6 +1,4 @@
 """Support for FFmpeg."""
-from typing import Optional
-
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -15,7 +13,6 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_send,
 )
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.typing import HomeAssistantType
 
 DOMAIN = "ffmpeg"
 
