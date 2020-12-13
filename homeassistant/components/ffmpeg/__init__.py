@@ -87,7 +87,7 @@ async def async_get_image(
     output_format: str = "jpeg",
     extra_cmd: Optional[str] = None,
     ):
-"""Get an image from a frame of an RTSP stream."""
+    """Get an image from a frame of an RTSP stream."""
     return
 
 class FFmpegManager:
