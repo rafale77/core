@@ -63,6 +63,7 @@ def time_synchronized():
     torch.cuda.synchronize() if torch.cuda.is_available() else None
     return time.time()
 
+
 def fuse_conv_and_bn(conv, bn):
     # https://tehnokv.com/posts/fusing-batchnorm-and-conv/
     with torch.no_grad():
@@ -73,7 +74,7 @@ def fuse_conv_and_bn(conv, bn):
             kernel_size=conv.kernel_size,
             stride=conv.stride,
             padding=conv.padding,
-            bias=True
+            bias=True,
         ).to(conv.weight.device)
 
         # prepare filters
@@ -96,14 +97,19 @@ def fuse_conv_and_bn(conv, bn):
 
         return fusedconv
 
+
 def model_info(model, verbose=False, imgsz=64, device="cpu"):
     device = torch.device(device)
     # Plots a line-by-line description of a PyTorch model
     n_p = sum(x.numel() for x in model.parameters())  # number parameters
-    n_g = sum(x.numel() for x in model.parameters() if x.requires_grad)  # number gradients
+    n_g = sum(
+        x.numel() for x in model.parameters() if x.requires_grad
+    )  # number gradients
     if verbose:
         _LOGGER.warning(
-            "{:>5} {:>40} {:>9} {:>12} {:>20} {:>10} {:>10}".format('layer', 'name', 'gradient', 'parameters', 'shape', 'mu', 'sigma')
+            "{:>5} {:>40} {:>9} {:>12} {:>20} {:>10} {:>10}".format(
+                "layer", "name", "gradient", "parameters", "shape", "mu", "sigma"
+            )
         )
         for i, (name, p) in enumerate(model.named_parameters()):
             name = name.replace("module_list.", "")
@@ -120,7 +126,9 @@ def model_info(model, verbose=False, imgsz=64, device="cpu"):
                 )
             )
     _LOGGER.warning(
-        "Model Summary: {:g} layers, {:g} parameters, {:g} gradients".format(len(list(model.parameters())), n_p, n_g)
+        "Model Summary: {:g} layers, {:g} parameters, {:g} gradients".format(
+            len(list(model.parameters())), n_p, n_g
+        )
     )
 
 
@@ -143,7 +151,6 @@ class Detect(nn.Module):
             nn.Conv2d(x, self.no * self.na, 1) for x in ch
         )  # output conv
 
-
     def forward(self, x):
         # x = x.copy()  # for profiling
         z = []  # inference output
@@ -161,7 +168,7 @@ class Detect(nn.Module):
 
             y = x[i].sigmoid()
             y[..., 0:2] = (
-                y[..., 0:2] * 2. - 0.5 + self.grid[i].to(x[i].device)
+                y[..., 0:2] * 2.0 - 0.5 + self.grid[i].to(x[i].device)
             ) * self.stride[i]  # xy
             y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
             z.append(y.view(bs, -1, self.no))
@@ -176,7 +183,7 @@ class Detect(nn.Module):
 
 class Model(nn.Module):
     def __init__(
-        self, cfg='yolov5s.yaml', ch=3, nc=None
+        self, cfg="yolov5s.yaml", ch=3, nc=None
     ):  # model, input channels, number of classes
         super().__init__()
         if isinstance(cfg, dict):
@@ -191,7 +198,7 @@ class Model(nn.Module):
         # Define model
         if nc and nc != self.yaml["nc"]:
             _LOGGER.warning(
-                "Overriding {} nc={:g} with nc={:g}".format(cfg, self.yaml['nc'], nc)
+                "Overriding {} nc={:g} with nc={:g}".format(cfg, self.yaml["nc"], nc)
             )
             self.yaml["nc"] = nc  # override yaml value
         self.model, self.save = parse_model(
@@ -247,6 +254,7 @@ class Model(nn.Module):
             if profile:
                 try:
                     import thop
+
                     o = (
                         thop.profile(m, inputs=(x,), verbose=False)[0] / 1e9 * 2
                     )  # FLOPS
@@ -276,7 +284,7 @@ class Model(nn.Module):
 
     def _print_biases(self):
         m = self.model[-1]  # Detect() module
-        for mi in m.m:  # from
+        for mi in m.m:  # from
             b = mi.bias.detach().view(m.na, -1).T  # conv.bias(255) to (3,85)
             _LOGGER.warning(
                 ("%6g Conv2d.bias:" + "%10.3g" * 6)
@@ -300,13 +308,15 @@ class Model(nn.Module):
 
 def parse_model(d, ch):  # model_dict, input_channels(3)
     _LOGGER.warning(
-        "\n{:>3}{:>18}{:>3}{:>10}  {:<40}{:<30}".format("", "from", "n", "params", "module", "arguments")
+        "\n{:>3}{:>18}{:>3}{:>10}  {:<40}{:<30}".format(
+            "", "from", "n", "params", "module", "arguments"
+        )
     )
     anchors, nc, gd, gw = (
-        d['anchors'],
-        d['nc'],
-        d['depth_multiple'],
-        d['width_multiple'],
+        d["anchors"],
+        d["nc"],
+        d["depth_multiple"],
+        d["width_multiple"],
     )
     na = (
         (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors
@@ -315,7 +325,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(
-        d['backbone'] + d['head']
+        d["backbone"] + d["head"]
     ):  # from, number, module, args
         m = ast.literal_eval(m) if isinstance(m, str) else m  # eval strings
         for j, a in enumerate(args):
@@ -338,7 +348,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             BottleneckCSP2,
             SPPCSP,
             VoVCSP,
-            C3
+            C3,
         ]:
             c1, c2 = ch[f], args[0]
             c2 = make_divisible(c2 * gw, 8) if c2 != no else c2
@@ -358,10 +368,10 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             c2 = ch[f]
 
         m_ = nn.Sequential(*[m(*args) for _ in range(n)]) if n > 1 else m(*args)
-        t = str(m)[8:-2].replace('__main__.', '')  # module type
+        t = str(m)[8:-2].replace("__main__.", "")  # module type
         np = sum([x.numel() for x in m_.parameters()])  # number params
         m_.i, m_.f, m_.type, m_.np = i, f, t, np
-        _LOGGER.warning(f'{i:>3}{f:>18}{n:>3}{np:10.0f}  {t:<40}{args:<30}')  # print
+        _LOGGER.warning(f"{i:>3}{f:>18}{n:>3}{np:10.0f}  {t:<40}{args:<30}")  # print
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)
         layers.append(m_)
         ch.append(c2)
