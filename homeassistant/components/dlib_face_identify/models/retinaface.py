@@ -5,6 +5,8 @@ import torchvision.models._utils as _utils
 
 from .net import FPN as FPN, SSH as SSH
 
+# flake8: noqa
+
 
 class ClassHead(nn.Module):
     def __init__(self, inchannels=512, num_anchors=3):
