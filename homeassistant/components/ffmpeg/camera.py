@@ -45,7 +45,7 @@ class Client:
         t.start()
 
     def open(self):
-        """open stream."""
+        """Open cam stream."""
         if self.extra_cmd == "cuda":
             os.environ[
                 "OPENCV_FFMPEG_CAPTURE_OPTIONS"
