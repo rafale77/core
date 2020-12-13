@@ -143,7 +143,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         """Process image."""
         unknowns = []
         found = []
-        faces, unknowns, scores = self.face_detector.detect_align(image)
+        faces, unknowns, scores, _ = self.face_detector.detect_align(image)
         if len(scores) > 0:
             with autocast():
                 embs = self.arcmodel(self.faces_preprocessing(faces))
@@ -151,6 +151,6 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             dist = torch.sum(torch.pow(diff, 2), dim=1)
             minimum, min_idx = torch.min(dist, dim=1)
             min_idx[minimum > self.conf.threshold] = -1  # if no match, set idx to -1
-            for idx in enumerate(unknowns):
+            for idx, _ in enumerate(unknowns):
                 found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
         self.process_faces(found, len(unknowns))
