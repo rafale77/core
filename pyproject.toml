@@ -100,10 +100,14 @@ score = false
 ignored-modules = [
     "numpy",
     "torch",
+    "torch.tensor",
+    "mish_cuda",
+    "thop",
 ]
 ignored-classes = [
     "_CountingAttr",  # for attrs
     "torch",
+    "torch.tensor",
     "mish_cuda",
     "numpy",
 ]
