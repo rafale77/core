@@ -83,10 +83,10 @@ async def async_setup(hass, config):
 
 
 async def async_get_image(
-    hass: "HomeAssistantType",
+    hass: str,
     input_source: str,
-    output_format: str = "jpeg",
-    extra_cmd: Optional[str] = None,
+    output_format: str,
+    extra_cmd: str = None,
 ):
     """Get an image from a frame of an RTSP stream."""
     return
