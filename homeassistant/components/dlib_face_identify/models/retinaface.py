@@ -58,7 +58,7 @@ class RetinaFace(nn.Module):
         super().__init__()
 
         import torchvision.models as models
-        
+
         backbone = models.resnet50(pretrained=cfg["pretrain"])
 
         self.body = _utils.IntermediateLayerGetter(backbone, cfg["return_layers"])
