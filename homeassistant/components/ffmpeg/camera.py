@@ -83,7 +83,7 @@ class OpenCVCamera(Camera):
         self._input = config.get(CONF_INPUT)
         self._extra_arguments = config.get(CONF_EXTRA_ARGUMENTS)
         self.client = Client(
-            rtsp_server_uri = self._input, extra_cmd=self._extra_arguments
+            rtsp_server_uri=self._input, extra_cmd=self._extra_arguments
         )
 
     @property
