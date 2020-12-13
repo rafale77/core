@@ -1,1 +1,1 @@
-""" YoloV4 Mish """
+"""YoloV4 Mish."""
