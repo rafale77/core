@@ -7,6 +7,7 @@ import torch
 # https://github.com/fmassa/object-detection.torch
 # Ported to PyTorch by Max deGroot (02/01/2017)
 
+
 def prior_box(cfg, image_size=None, device="cpu"):
     steps = cfg["steps"]
     feature_maps = [
@@ -48,7 +49,7 @@ def decode(loc, priors, variances):
     boxes = torch.cat(
         (
             priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
-            priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1])
+            priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1]),
         ),
         1,
     )
