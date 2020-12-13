@@ -21,6 +21,7 @@ ignore = [
     "tests",
 ]
 disable = [
+    "W0703",  # general exception
     "C0103",  # variable capitalization
     "C0113",  # missing-module-docstring
     "C0114",  # missing-module-docstring
