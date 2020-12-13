@@ -34,6 +34,7 @@ extension-pkg-whitelist = [
     "torch",
     "mish-cuda",
     "thop",
+    "numpy",
 ]
 
 [tool.pylint.BASIC]
@@ -96,8 +97,15 @@ enable = [
 score = false
 
 [tool.pylint.TYPECHECK]
+ignored-modules = [
+    "numpy",
+    "torch",
+]
 ignored-classes = [
     "_CountingAttr",  # for attrs
+    "torch",
+    "mish_cuda",
+    "numpy",
 ]
 
 [tool.pylint.FORMAT]
