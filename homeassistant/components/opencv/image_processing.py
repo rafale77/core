@@ -34,7 +34,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 imgsz = int(672)
 sys.path.insert(
     0,
-    str(Path.home()) + "/.local/lib/python3.7/site-packages/homeassistant/components/opencv/"
+    str(Path.home())
+    + "/.local/lib/python3.7/site-packages/homeassistant/components/opencv/",
 )
 model = torch.load(home + "yolov4l-mish.pt", device)["model"].fuse().eval().half()
 with open(home + "cococlasses.txt") as f:
@@ -70,7 +71,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
     # Settings
     min_wh, max_wh = 2, 4096  # (pixels) minimum and maximum box width and height
     max_det = 300  # maximum number of detections per image
-    multi_label = False #nc > 1  # multiple labels per box (adds 0.5ms/img)
+    multi_label = False # nc > 1  # multiple labels per box (adds 0.5ms/img)
 
     output = [None] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
@@ -114,11 +115,13 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
         output[xi] = x[i]
     return output
 
+
 def preprocessor(img_raw, w, h, device):
     img_raw = cv2.resize(img_raw, (w, h))
     img = torch.tensor(img_raw, dtype=torch.float16).div(255).to(device)
     img = img.permute(2, 0, 1).unsqueeze(0)
     return img
+
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the opencv object detection platform."""
@@ -191,6 +194,8 @@ class OpenCVImageProcessor(ImageProcessingEntity):
                     s = det[:, 4]
                     if s[i] >= self._confidence:
                         if class_names[int(c)] in self._classifiers:
-                            label = "{:g} {} : {:.2f}".format(n, class_names[int(c)], s[i] * 100)
+                            label = "{:g} {} : {:.2f}".format(
+                                n, class_names[int(c)], s[i] * 100
+                            )
                             self._matches.append(label)
         self._total_matches = len(self._matches)
