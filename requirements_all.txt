@@ -584,7 +584,10 @@ evohome-async==0.3.5.post1
 
 # homeassistant.components.dlib_face_detect
 # face_recognition==1.2.3
-
+# homeassistant.components.dlib_face_identify
+torch==1.7.1 
+torchvision==0.8.2
+opencv-python-headless==4.4.0.46
 # homeassistant.components.fastdotcom
 fastdotcom==0.0.3
 
@@ -723,7 +726,7 @@ guppy3==3.1.0
 
 # homeassistant.components.ffmpeg
 ha-ffmpeg==2.0
-
+opencv-python-headless==4.4.0.46
 # homeassistant.components.philips_js
 ha-philipsjs==0.0.8
 
@@ -1016,6 +1019,9 @@ numato-gpio==0.8.0
 
 # homeassistant.components.iqvia
 # homeassistant.components.opencv
+torch==1.7.1 
+torchvision==0.8.2
+opencv-python-headless==4.4.0.46
 # homeassistant.components.tensorflow
 # homeassistant.components.trend
 numpy==1.19.2
