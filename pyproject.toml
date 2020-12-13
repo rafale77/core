@@ -31,6 +31,7 @@ persistent = false
 extension-pkg-whitelist = [
     "ciso8601",
     "cv2",
+    "torch",
 ]
 
 [tool.pylint.BASIC]
@@ -96,7 +97,6 @@ score = false
 ignored-classes = [
     "_CountingAttr",  # for attrs
 ]
-generated-members = numpy.*, torch.*
 
 [tool.pylint.FORMAT]
 expected-line-ending-format = "LF"
