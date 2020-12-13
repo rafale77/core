@@ -81,14 +81,16 @@ async def async_setup(hass, config):
     hass.data[DATA_FFMPEG] = manager
     return True
 
+
 async def async_get_image(
     hass: "HomeAssistantType",
     input_source: str,
     output_format: str = "jpeg",
     extra_cmd: Optional[str] = None,
-    ):
+):
     """Get an image from a frame of an RTSP stream."""
     return
+
 
 class FFmpegManager:
     """Helper for ha-ffmpeg."""
