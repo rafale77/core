@@ -1,10 +1,10 @@
 """Support for Cameras with OpenCV as decoder."""
 import logging
 import os
-
-import voluptuous as vol
-import cv2
 from threading import Thread
+
+import cv2
+import voluptuous as vol
 
 from homeassistant.components.camera import PLATFORM_SCHEMA, SUPPORT_STREAM, Camera
 from homeassistant.const import CONF_NAME
