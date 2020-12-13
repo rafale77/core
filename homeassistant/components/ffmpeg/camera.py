@@ -31,14 +31,12 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class Client:
-    """ Maintain live RTSP feed without buffering. """
+    """Maintain live RTSP feed without buffering."""
 
     _stream = None
 
     def __init__(self, rtsp_server_uri, extra_cmd):
-        """
-        rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
-        """
+        """rtsp_server_uri: the path to an RTSP server. should start with rtsp://."""
         self.rtsp_server_uri = rtsp_server_uri
         self.extra_cmd = extra_cmd
         self.open()
@@ -47,6 +45,7 @@ class Client:
         t.start()
 
     def open(self):
+        """open stream."""
         if self.extra_cmd == "cuda":
             os.environ[
                 "OPENCV_FFMPEG_CAPTURE_OPTIONS"
@@ -66,7 +65,7 @@ class Client:
                 self.open()
 
     def read(self):
-        """ Retrieve most recent frame and decode"""
+        """Retrieve most recent frame and decode."""
         (read, frame) = self._stream.retrieve()
         return frame
 
