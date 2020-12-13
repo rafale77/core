@@ -21,6 +21,7 @@ from torch.nn import (
 #  Original Arcface Model ######################################
 # flake8: noqa
 
+
 class Flatten(Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
