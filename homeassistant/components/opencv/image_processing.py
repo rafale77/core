@@ -58,10 +58,7 @@ def xywh2xyxy(x):
 
 
 def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None):
-    """Performs Non-Maximum Suppression (NMS) on inference results
-    Returns:
-         detections with shape: nx6 (x1, y1, x2, y2, conf, cls).
-    """
+    """detections with shape: nx6 (x1, y1, x2, y2, conf, cls)."""
 
     nc = prediction[0].shape[1] - 5  # number of classes
     xc = prediction[..., 4] > conf_thres  # candidates
@@ -120,7 +117,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
 
 
 def preprocessor(img_raw, w, h, device):
-    """image conversion."""
+    """Image conversion."""
     img_raw = cv2.resize(img_raw, (w, h))
     img = torch.tensor(img_raw, dtype=torch.float16).div(255).to(device)
     img = img.permute(2, 0, 1).unsqueeze(0)
