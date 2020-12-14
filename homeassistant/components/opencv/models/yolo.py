@@ -284,7 +284,7 @@ class Model(nn.Module):
     def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
         _LOGGER.warning("Fusing layers... ")
         for m in self.model.modules():
-            if isinstance(m) is Conv:
+            if isinstance(m, Conv):
                 m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
                 m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
                 delattr(m, "bn")  # remove batchnorm
