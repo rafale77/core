@@ -1,9 +1,11 @@
 # This file contains experimental modules
 import numpy as np
-import torch.nn as nn
 import torch
+import torch.nn as nn
+
 from .common import Conv, DWConv
 
+# flake8: noqa
 
 
 class CrossConv(nn.Module):
@@ -51,7 +53,7 @@ class Sum(nn.Module):
         self.iter = range(n - 1)  # iter object
         if weight:
             self.w = nn.Parameter(
-                -torch.arange(1., n) / 2, requires_grad=True
+                -torch.arange(1.0, n) / 2, requires_grad=True
             )  # layer weights
 
     def forward(self, x):
@@ -89,7 +91,7 @@ class GhostBottleneck(nn.Module):
         self.conv = nn.Sequential(
             GhostConv(c1, c_, 1, 1),  # pw
             DWConv(c_, c_, k, s, act=False) if s == 2 else nn.Identity(),  # dw
-            GhostConv(c_, c2, 1, 1, act=False)
+            GhostConv(c_, c2, 1, 1, act=False),
         )  # pw-linear
         self.shortcut = (
             nn.Sequential(
@@ -132,18 +134,3 @@ class MixConv2d(nn.Module):
 
     def forward(self, x):
         return x + self.act(self.bn(torch.cat([m(x) for m in self.m], 1)))
-
-
-class Ensemble(nn.ModuleList):
-    # Ensemble of models
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, augment=False):
-        y = []
-        for module in self:
-            y.append(module(x, augment)[0])
-        # y = torch.stack(y).max(0)[0]  # max ensemble
-        # y = torch.cat(y, 1)  # nms ensemble
-        y = torch.stack(y).mean(0)  # mean ensemble
-        return y, None  # inference, train output
