@@ -1,11 +1,10 @@
 """Support for Cameras with OpenCV as decoder."""
-import asyncio
 import logging
 import os
-
-import voluptuous as vol
-import cv2
 from threading import Thread
+
+import cv2
+import voluptuous as vol
 
 from homeassistant.components.camera import PLATFORM_SCHEMA, SUPPORT_STREAM, Camera
 from homeassistant.const import CONF_NAME
@@ -25,18 +24,19 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
+
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up a OpenCV camera."""
     async_add_entities([OpenCVCamera(hass, config)])
 
+
 class Client:
-    """ Maintain live RTSP feed without buffering. """
+    """Maintain live RTSP feed without buffering."""
+
     _stream = None
 
     def __init__(self, rtsp_server_uri, extra_cmd):
-        """
-            rtsp_server_uri: the path to an RTSP server. should start with "rtsp://"
-        """
+        """rtsp_server_uri: the path to an RTSP server. should start with rtsp://."""
         self.rtsp_server_uri = rtsp_server_uri
         self.extra_cmd = extra_cmd
         self.open()
@@ -45,10 +45,15 @@ class Client:
         t.start()
 
     def open(self):
+        """Open cam stream."""
         if self.extra_cmd == "cuda":
-            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
+            os.environ[
+                "OPENCV_FFMPEG_CAPTURE_OPTIONS"
+            ] = "hwaccel;cuvid|video_codec;h264_cuvid|vsync;0"
         if self.extra_cmd == "hevc":
-            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
+            os.environ[
+                "OPENCV_FFMPEG_CAPTURE_OPTIONS"
+            ] = "hwaccel;cuvid|video_codec;hevc_cuvid|vsync;0"
         self._stream = cv2.VideoCapture(self.rtsp_server_uri, cv2.CAP_FFMPEG)
 
     def _update(self):
@@ -60,9 +65,10 @@ class Client:
                 self.open()
 
     def read(self):
-        """ Retrieve most recent frame and decode"""
-        (read, frame) = self._stream.retrieve()
+        """Retrieve most recent frame and decode."""
+        (_, frame) = self._stream.retrieve()
         return frame
+
 
 class OpenCVCamera(Camera):
     """An implementation of an OpenCV camera."""
@@ -74,7 +80,9 @@ class OpenCVCamera(Camera):
         self._name = config.get(CONF_NAME)
         self._input = config.get(CONF_INPUT)
         self._extra_arguments = config.get(CONF_EXTRA_ARGUMENTS)
-        self.client = Client(rtsp_server_uri = self._input, extra_cmd=self._extra_arguments)
+        self.client = Client(
+            rtsp_server_uri=self._input, extra_cmd=self._extra_arguments
+        )
 
     @property
     def supported_features(self):
@@ -93,7 +101,7 @@ class OpenCVCamera(Camera):
     async def async_camera_image(self):
         """Return a still image response from the camera."""
         frame = self.client.read()
-        ret, image = cv2.imencode('.jpg', frame)
+        _, image = cv2.imencode(".jpg", frame)
         return image.tobytes()
 
     async def handle_async_mjpeg_stream(self, request):

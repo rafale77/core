@@ -20,6 +20,19 @@ combine_as_imports = true
 ignore = [
     "tests",
 ]
+disable = [
+    "R0201",  # method which could be function
+    "W0212",  # protected access
+    "W0703",  # general exception
+    "W1201",  # lazy logging
+    "W1203",  # lazy logging
+    "C0103",  # variable capitalization
+    "C0113",  # missing-module-docstring
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-module-docstring
+    "C0116",  # missing-module-docstring
+    "E1102",  # torch.tensor
+]    
 # Use a conservative default here; 2 should speed up most setups and not hurt
 # any too bad. Override on command line as appropriate.
 # Disabled for now: https://github.com/PyCQA/pylint/issues/3584
@@ -31,6 +44,10 @@ persistent = false
 extension-pkg-whitelist = [
     "ciso8601",
     "cv2",
+    "torch",
+    "mish-cuda",
+    "thop",
+    "numpy",
 ]
 
 [tool.pylint.BASIC]
@@ -93,8 +110,19 @@ enable = [
 score = false
 
 [tool.pylint.TYPECHECK]
+ignored-modules = [
+    "numpy",
+    "torch",
+    "torch.tensor",
+    "mish_cuda",
+    "thop",
+]
 ignored-classes = [
     "_CountingAttr",  # for attrs
+    "torch",
+    "torch.tensor",
+    "mish_cuda",
+    "numpy",
 ]
 
 [tool.pylint.FORMAT]

@@ -179,7 +179,6 @@ async def async_get_raw_image(hass, entity_id, timeout=10):
     raise HomeAssistantError("Unable to get image")
 
 
-
 @bind_hass
 async def async_get_stream_source(hass, entity_id):
     """Fetch the stream source for a camera entity."""

@@ -642,8 +642,8 @@ class ZHAGateway:
         """Handle message from a device Event handler."""
         if sender.ieee in self.devices and not self.devices[sender.ieee].available:
             self.async_update_device(sender, available=True)
-        
-        
+
+
 @callback
 def async_capture_log_levels():
     """Capture current logger levels for ZHA."""

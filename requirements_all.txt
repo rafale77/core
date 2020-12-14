@@ -583,7 +583,6 @@ eternalegypt==0.0.12
 evohome-async==0.3.5.post1
 
 # homeassistant.components.dlib_face_detect
-# homeassistant.components.dlib_face_identify
 # face_recognition==1.2.3
 
 # homeassistant.components.fastdotcom
@@ -1015,11 +1014,12 @@ nuheat==0.3.0
 # homeassistant.components.numato
 numato-gpio==0.8.0
 
+# homeassistant.components.dlib_face_identify
 # homeassistant.components.iqvia
 # homeassistant.components.opencv
 # homeassistant.components.tensorflow
 # homeassistant.components.trend
-numpy==1.19.2
+numpy==1.19.4
 
 # homeassistant.components.oasa_telematics
 oasatelematics==0.3
@@ -1045,8 +1045,10 @@ onvif-zeep-async==1.0.0
 # homeassistant.components.opengarage
 open-garage==0.1.4
 
+# homeassistant.components.dlib_face_identify
+# homeassistant.components.ffmpeg
 # homeassistant.components.opencv
-# opencv-python-headless==4.3.0.36
+# opencv-python-headless==4.4.0.46
 
 # homeassistant.components.openerz
 openerz-api==0.1.0
@@ -1989,6 +1991,9 @@ satel_integra==0.3.4
 # homeassistant.components.deutsche_bahn
 schiene==0.23
 
+# homeassistant.components.dlib_face_identify
+scikit-image==0.17.2
+
 # homeassistant.components.scsgate
 scsgate==0.1.0
 
@@ -2190,6 +2195,14 @@ todoist-python==8.0.0
 
 # homeassistant.components.toon
 toonapi==0.2.0
+
+# homeassistant.components.dlib_face_identify
+# homeassistant.components.opencv
+torch==1.7.1
+
+# homeassistant.components.dlib_face_identify
+# homeassistant.components.opencv
+torchvision==0.8.2
 
 # homeassistant.components.totalconnect
 total_connect_client==0.55

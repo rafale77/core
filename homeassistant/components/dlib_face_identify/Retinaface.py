@@ -1,36 +1,38 @@
-import torch
-import cv2
-import logging
-import numpy as np
-
-from skimage import transform
 from collections import OrderedDict
-from torch.cuda.amp import autocast
-#from torch2trt import torch2trt
-#from torch2trt import TRTModule
+import logging
 
-from .utils.box_utils import decode, decode_landmark, prior_box, nms
+import cv2
+import numpy as np
+from skimage import transform
+import torch
+from torch.cuda.amp import autocast
+
 from .models.retinaface import RetinaFace
+from .utils.box_utils import decode, decode_landmark, nms, prior_box
+
+# flake8: noqa
+# from torch2trt import torch2trt
+# from torch2trt import TRTModule
 
 _LOGGER = logging.getLogger(__name__)
 
 cfg = {
-    'min_sizes': [[16, 32], [64, 128], [256, 512]],
-    'steps': [8, 16, 32],
-    'variance': [0.1, 0.2],
-    'clip': False,
-    'loc_weight': 2.0,
-    'gpu_train': True,
-    'batch_size': 1,
-    'ngpu': 4,
-    'epoch': 100,
-    'decay1': 70,
-    'decay2': 90,
-    'image_size': 840,
-    'pretrain': True,
-    'return_layers': {'layer2': 1, 'layer3': 2, 'layer4': 3},
-    'in_channel': 256,
-    'out_channel': 256
+    "min_sizes": [[16, 32], [64, 128], [256, 512]],
+    "steps": [8, 16, 32],
+    "variance": [0.1, 0.2],
+    "clip": False,
+    "loc_weight": 2.0,
+    "gpu_train": True,
+    "batch_size": 1,
+    "ngpu": 4,
+    "epoch": 100,
+    "decay1": 70,
+    "decay2": 90,
+    "image_size": 840,
+    "pretrain": True,
+    "return_layers": {"layer2": 1, "layer3": 2, "layer4": 3},
+    "in_channel": 256,
+    "out_channel": 256,
 }
 
 REFERENCE_FACIAL_POINTS = [
@@ -38,7 +40,7 @@ REFERENCE_FACIAL_POINTS = [
     [65.53179932, 51.50139999],
     [48.02519989, 71.73660278],
     [33.54930115, 87],
-    [62.72990036, 87]
+    [62.72990036, 87],
 ]
 
 DEFAULT_CROP_SIZE = (96, 112)
@@ -54,8 +56,8 @@ def get_reference_facial_points(output_size=(112, 112)):
     # tmp_crop_size += size_diff
     # return tmp_5pts
 
-    x_scale = output_size[0]/tmp_crop_size[0]
-    y_scale = output_size[1]/tmp_crop_size[1]
+    x_scale = output_size[0] / tmp_crop_size[0]
+    y_scale = output_size[1] / tmp_crop_size[1]
     tmp_5pts[:, 0] *= x_scale
     tmp_5pts[:, 1] *= y_scale
 
@@ -63,9 +65,16 @@ def get_reference_facial_points(output_size=(112, 112)):
 
 
 class FaceDetector:
-
-    def __init__(self, weight_path, device='cpu', confidence_threshold=0.99,
-                 top_k=5000, nms_threshold=0.4, keep_top_k=750, face_size=(112, 112)):
+    def __init__(
+        self,
+        weight_path,
+        device="cpu",
+        confidence_threshold=0.99,
+        top_k=5000,
+        nms_threshold=0.4,
+        keep_top_k=750,
+        face_size=(112, 112),
+    ):
         """
         RetinaFace Detector with 5points landmarks
         Args:
@@ -75,12 +84,12 @@ class FaceDetector:
             face_padding: padding for bounding boxes
         """
         # setting for model
-#        model = TRTModule()
-#        model.load_state_dict(torch.load('/home/anhman/.homeassistant/model/retina_trt.pth'))
+        # model = TRTModule()
+        # model.load_state_dict(torch.load("/home/anhman/.homeassistant/model/retina_trt.pth"))
         state_dict = torch.load(weight_path)
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
-            name = k[7:] # remove `module.`
+            name = k[7:]  # remove `module.`
             new_state_dict[name] = v
         model = RetinaFace(cfg).to(device)
         model.load_state_dict(new_state_dict)
@@ -97,13 +106,12 @@ class FaceDetector:
         self.trans = transform.SimilarityTransform()
         self.out_size = face_size
         self.ref_pts = get_reference_facial_points(output_size=face_size)
-        #print('from FaceDetector: weights loaded')
-        return
 
     def preprocessor(self, img_raw):
         img = torch.tensor(img_raw, dtype=torch.float32).to(self.device)
-        #img = torch.tensor(img_raw, dtype=torch.float16).to(self.device)
-        scale = torch.tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]]).to(self.device)
+        scale = torch.tensor(
+            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]]
+        ).to(self.device)
         img -= torch.tensor([104, 117, 123]).to(self.device)
         img = img.permute(2, 0, 1).unsqueeze(0)
         return img, scale
@@ -130,16 +138,26 @@ class FaceDetector:
         with torch.no_grad():
             with autocast():
                 loc, conf, landmarks = self.model(img)  # forward pass
-            # print('net forward time: {:.4f}'.format(time.time() - tic))
 
         priors = prior_box(self.cfg, image_size=img.shape[2:], device=self.device)
-        boxes = decode(loc.data.squeeze(0), priors, self.cfg['variance'])
+        boxes = decode(loc.data.squeeze(0), priors, self.cfg["variance"])
         boxes = boxes * scale
         scores = conf.squeeze(0)[:, 1]
-        landmarks = decode_landmark(landmarks.squeeze(0), priors, self.cfg['variance'])
-        scale1 = torch.tensor([img.shape[3], img.shape[2], img.shape[3], img.shape[2],
-                               img.shape[3], img.shape[2], img.shape[3], img.shape[2],
-                               img.shape[3], img.shape[2]]).to(self.device)
+        landmarks = decode_landmark(landmarks.squeeze(0), priors, self.cfg["variance"])
+        scale1 = torch.tensor(
+            [
+                img.shape[3],
+                img.shape[2],
+                img.shape[3],
+                img.shape[2],
+                img.shape[3],
+                img.shape[2],
+                img.shape[3],
+                img.shape[2],
+                img.shape[3],
+                img.shape[2],
+            ]
+        ).to(self.device)
         landmarks = landmarks * scale1
 
         # ignore low scores
@@ -149,7 +167,7 @@ class FaceDetector:
         scores = scores[index]
 
         # keep top-K before NMS
-        order = scores.argsort(dim=0, descending=True)[:self.top_k]
+        order = scores.argsort(dim=0, descending=True)[: self.top_k]
         boxes = boxes[order]
         landmarks = landmarks[order]
         scores = scores[order]
@@ -161,9 +179,9 @@ class FaceDetector:
         landmarks = landmarks[keep, :].reshape(-1, 5, 2)
 
         # # keep top-K faster NMS
-        landmarks = landmarks[:self.keep_top_k, :]
-        scores = scores[:self.keep_top_k, :]
-        boxes = boxes[:self.keep_top_k, :]
+        landmarks = landmarks[: self.keep_top_k, :]
+        scores = scores[: self.keep_top_k, :]
+        boxes = boxes[: self.keep_top_k, :]
 
         return boxes, scores, landmarks
 
@@ -190,13 +208,17 @@ class FaceDetector:
         warped = []
         for src_pts in landmarks:
             if max(src_pts.shape) < 3 or min(src_pts.shape) != 2:
-                raise _LOGGER.warning('RetinaFace facial_pts.shape must be (K,2) or (2,K) and K>2')
+                raise _LOGGER.warning(
+                    "RetinaFace facial_pts.shape must be (K,2) or (2,K) and K>2"
+                )
 
             if src_pts.shape[0] == 2:
                 src_pts = src_pts.T
 
             if src_pts.shape != self.ref_pts.shape:
-                raise _LOGGER.warning("RetinaFace facial_pts and reference_pts must have the same shape")
+                raise _LOGGER.warning(
+                    "RetinaFace facial_pts and reference_pts must have the same shape"
+                )
 
             self.trans.estimate(src_pts.cpu().numpy(), self.ref_pts)
             face_img = cv2.warpAffine(img, self.trans.params[0:2, :], self.out_size)
