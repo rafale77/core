@@ -10,6 +10,7 @@ from easydict import EasyDict as edict
 import numpy as np
 import torch
 from torch.cuda.amp import autocast
+from torchvision import transforms as trans
 
 from homeassistant.components.image_processing import (
     CONF_ENTITY_ID,
@@ -92,10 +93,8 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def faces_preprocessing(self, faces):
         """Forward."""
-        faces = faces.permute(0, 3, 1, 2)
-        faces = faces.div(255).to(self.device)
-        mu = torch.as_tensor([0.5, 0.5, 0.5], dtype=faces.dtype, device=self.device)
-        faces[:].sub_(mu[:, None, None]).div_(mu[:, None, None])
+        norma = trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+        faces = norma(faces.permute(0, 3, 1, 2).div(255).to(self.device))
         return faces
 
     def train_faces(self):
