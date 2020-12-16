@@ -20,7 +20,7 @@ from homeassistant.components.image_processing import (
 )
 from homeassistant.core import split_entity_id
 
-from .Arcface import Backbone
+from .model import Backbone
 from .Retinaface import FaceDetector
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def faces_preprocessing(self, faces):
         """Forward."""
         norma = trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-        faces = norma(faces.permute(0, 3, 1, 2).div(255).to(self.device))
+        faces = norma(faces.permute(0, 3, 1, 2).div(255))
         return faces
 
     def train_faces(self):
