@@ -193,15 +193,14 @@ class FaceDetector:
         # setting for model
         # model = TRTModule()
         # model.load_state_dict(torch.load("/home/anhman/.homeassistant/model/retina_trt.pth"))
+        self.device = device
         state_dict = torch.load(weight_path)
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             name = k[7:]  # remove `module.`
             new_state_dict[name] = v
         self.model = RetinaFace(cfg).to(device)
-        self.model.load_state_dict(new_state_dict)
-        self.model.eval()
-        self.device = device
+        self.model.load_state_dict(new_state_dict).eval()
         self.cfg = cfg
         # setting for face detection
         self.thresh = confidence_threshold
