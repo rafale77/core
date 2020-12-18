@@ -48,7 +48,7 @@ def get_config():
     return conf
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Dlib Face detection platform."""
 
     entities = []
@@ -59,7 +59,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 camera.get(CONF_NAME),
             )
         )
-    add_entities(entities)
+    async_add_entities(entities)
 
 
 class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
