@@ -68,7 +68,7 @@ def prior_box(cfg, image_size=None, device="cpu"):
                     anchors += [cx, cy, s_kx, s_ky]
 
     # back to torch land
-    output = torch.Tensor(anchors).view(-1, 4).to(device)
+    output = torch.as_tensor(anchors, device=device).view(-1, 4)
     return output
 
 
@@ -128,7 +128,7 @@ def nms(box, scores, thresh):
     y1 = box[:, 1]
     x2 = box[:, 2]
     y2 = box[:, 3]
-    zero = torch.tensor([0.0]).to(scores.device)
+    zero = torch.as_tensor([0.0], device=scores.device)
 
     areas = (x2 - x1 + 1) * (y2 - y1 + 1)
     order = scores.argsort(descending=True)
@@ -214,10 +214,11 @@ class FaceDetector:
         self.ref_pts = get_reference_facial_points(output_size=face_size)
 
     def preprocessor(self, img_raw):
-        img = torch.tensor(img_raw, dtype=torch.float32).to(self.device)
-        scale = torch.tensor(
-            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]]
-        ).to(self.device)
+        img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
+        scale = torch.as_tensor(
+            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]],
+            device=self.device
+        )
         img -= torch.tensor([104, 117, 123]).to(self.device)
         img = img.permute(2, 0, 1).unsqueeze(0)
         return img, scale
@@ -250,7 +251,7 @@ class FaceDetector:
         boxes = boxes * scale
         scores = conf.squeeze(0)[:, 1]
         landmarks = decode_landmark(landmarks.squeeze(0), priors, self.cfg["variance"])
-        scale1 = torch.tensor(
+        scale1 = torch.as_tensor(
             [
                 img.shape[3],
                 img.shape[2],
@@ -262,8 +263,9 @@ class FaceDetector:
                 img.shape[2],
                 img.shape[3],
                 img.shape[2],
-            ]
-        ).to(self.device)
+            ],
+            device=(self.device)
+        )
         landmarks = landmarks * scale1
 
         # ignore low scores
@@ -330,5 +332,5 @@ class FaceDetector:
             face_img = cv2.warpAffine(img, self.trans.params[0:2, :], self.out_size)
             warped.append(face_img)
 
-        faces = torch.tensor(warped, dtype=torch.float32).to(self.device)
+        faces = torch.as_tensor(warped, dtype=torch.float32, device=self.device)
         return faces, boxes, scores, landmarks
