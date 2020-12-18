@@ -16,7 +16,8 @@ from torch.nn import (
     Sequential,
 )
 
-from mish_cuda import MishCuda as Mish
+# from mish_cuda import MishCuda as Mish
+from mc import MishCuda as Mish
 
 # flake8: noqa
 
