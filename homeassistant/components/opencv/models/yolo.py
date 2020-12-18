@@ -1,11 +1,21 @@
-import ast
+from ast import literal_eval
 from copy import deepcopy
 import logging
 import math
 from pathlib import Path
 
 import torch
-import torch.nn as nn
+from torch.nn import (
+    BatchNorm2d,
+    Conv2d,
+    LeakyReLU,
+    Module,
+    ModuleList,
+    Parameter,
+    ReLU,
+    ReLU6,
+    Sequential,
+)
 import torch.nn.functional as F
 import yaml  # for torch hub
 
@@ -19,11 +29,14 @@ from .common import (
     Conv,
     DWConv,
     Focus,
+    HarDBlock,
+    HarDBlock2,
     VoVCSP,
 )
 from .experimental import C3, CrossConv, MixConv2d
 
 _LOGGER = logging.getLogger(__name__)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # flake8: noqa
 
@@ -47,12 +60,12 @@ def check_anchor_order(m):
 def initialize_weights(model):
     for m in model.modules():
         t = type(m)
-        if t is nn.Conv2d:
-            pass  # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        elif t is nn.BatchNorm2d:
+        if t is Conv2d:
+            pass  # init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        elif t is BatchNorm2d:
             m.eps = 1e-3
             m.momentum = 0.03
-        elif t in [nn.LeakyReLU, nn.ReLU, nn.ReLU6]:
+        elif t in [LeakyReLU, ReLU, ReLU6]:
             m.inplace = True
 
 
@@ -73,14 +86,14 @@ def fuse_conv_and_bn(conv, bn):
     # https://tehnokv.com/posts/fusing-batchnorm-and-conv/
     with torch.no_grad():
         # init
-        fusedconv = nn.Conv2d(
+        fusedconv = Conv2d(
             conv.in_channels,
             conv.out_channels,
             kernel_size=conv.kernel_size,
             stride=conv.stride,
             padding=conv.padding,
             bias=True,
-        ).to(conv.weight.device)
+        ).to(device)
 
         # prepare filters
         w_conv = conv.weight.clone().view(conv.out_channels, -1)
@@ -90,7 +103,7 @@ def fuse_conv_and_bn(conv, bn):
         # prepare spatial bias
         b_conv = (
             torch.zeros(
-                conv.weight.size(0), dtype=torch.float16, device=conv.weight.device
+                conv.weight.size(0), dtype=torch.float16, device=device
             )
             if conv.bias is None
             else conv.bias
@@ -103,8 +116,7 @@ def fuse_conv_and_bn(conv, bn):
         return fusedconv
 
 
-def model_info(model, verbose=False, imgsz=64, device="cpu"):
-    device = torch.device(device)
+def model_info(model, verbose=False, imgsz=64):
     # Plots a line-by-line description of a PyTorch model
     n_p = sum(x.numel() for x in model.parameters())  # number parameters
     n_g = sum(
@@ -137,7 +149,7 @@ def model_info(model, verbose=False, imgsz=64, device="cpu"):
     )
 
 
-class Detect(nn.Module):
+class Detect(Module):
     stride = None  # strides computed during build
 
     def __init__(self, nc=80, anchors=(), ch=()):  # detection layer
@@ -148,17 +160,17 @@ class Detect(nn.Module):
         self.nl = len(anchors)  # number of detection layers
         self.na = len(anchors[0]) // 2  # number of anchors
         self.grid = [torch.zeros(1)] * self.nl  # init grid
-        a = torch.tensor(anchors).float().view(self.nl, -1, 2)
+        a = torch.as_tensor(anchors).float().view(self.nl, -1, 2).to(device)
         self.register_buffer("anchors", a)  # shape(nl,na,2)
         self.register_buffer(
             "anchor_grid", a.clone().view(self.nl, 1, -1, 1, 1, 2)
         )  # shape(nl,1,na,1,1,2)
-        self.m = nn.ModuleList(
-            nn.Conv2d(x, self.no * self.na, 1) for x in ch
+        self.m = ModuleList(
+            Conv2d(x, self.no * self.na, 1) for x in ch
         )  # output conv
 
+
     def forward(self, x):
-        # x = x.copy()  # for profiling
         z = []  # inference output
         for i in range(self.nl):
             x[i] = self.m[i](x[i])  # conv
@@ -189,9 +201,9 @@ class Detect(nn.Module):
         return torch.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).float()
 
 
-class Model(nn.Module):
+class Model(Module):
     def __init__(
-        self, cfg="yolov4l-mish.yaml", ch=3, nc=None
+        self, cfg="yolov4-p5.yaml", ch=3, nc=None
     ):  # model, input channels, number of classes
         super().__init__()
         if isinstance(cfg, dict):
@@ -215,9 +227,9 @@ class Model(nn.Module):
         m = self.model[-1]  # Detect()
         if isinstance(m, Detect):
             s = 128  # 2x min stride
-            m.stride = torch.tensor(
+            m.stride = torch.as_tensor(
                 [s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))]
-            )  # forward
+            ).to(device)  # forward
             m.anchors /= m.stride.view(-1, 1, 1)
             check_anchor_order(m)
             self.stride = m.stride
@@ -227,6 +239,7 @@ class Model(nn.Module):
         # Init weights, biases
         initialize_weights(self)
         self.info()
+
 
     def forward(self, x, augment=False):
         if augment:
@@ -246,6 +259,7 @@ class Model(nn.Module):
             return torch.cat(y, 1), None  # augmented inference, train
         return self.forward_once(x)  # single-scale inference, train
 
+
     def forward_once(self, x):
         y = []  # outputs
         for m in self.model:
@@ -257,8 +271,8 @@ class Model(nn.Module):
                 )  # from earlier layers
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
-
         return x
+
 
     def _initialize_biases(self, cf=None):
         m = self.model[-1]  # Detect() module
@@ -270,7 +284,8 @@ class Model(nn.Module):
                 if cf is None
                 else torch.log(cf / cf.sum())
             )  # cls
-            mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
+            mi.bias = Parameter(b.view(-1), requires_grad=True)
+
 
     def _print_biases(self):
         m = self.model[-1]  # Detect() module
@@ -281,13 +296,14 @@ class Model(nn.Module):
                 % (mi.weight.shape[1], *b[:5].mean(1).tolist(), b[5:].mean())
             )
 
+
     def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
         _LOGGER.warning("Fusing layers... ")
         for m in self.model.modules():
             if isinstance(m, Conv):
                 m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
                 m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
-                delattr(m, "bn")  # remove batchnorm
+                m.bn = None  # remove batchnorm
                 m.forward = m.fuseforward  # update forward
         self.info()
         return self
@@ -312,21 +328,19 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors
     )  # number of anchors
     no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
-
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(
         d["backbone"] + d["head"]
     ):  # from, number, module, args
-        m = ast.literal_eval(m) if isinstance(m, str) else m  # eval strings
+        m = literal_eval(m) if isinstance(m, str) else m  # eval strings
         for j, a in enumerate(args):
             try:
-                args[j] = ast.literal_eval(a) if isinstance(a, str) else a
+                args[j] = literal_eval(a) if isinstance(a, str) else a
             except Exception:
                 pass
-
         n = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in [
-            nn.Conv2d,
+            Conv2d,
             Conv,
             Bottleneck,
             SPP,
@@ -346,7 +360,10 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             if m in [BottleneckCSP, BottleneckCSP2, SPPCSP, VoVCSP, C3]:
                 args.insert(2, n)
                 n = 1
-        elif m is nn.BatchNorm2d:
+        elif m in [HarDBlock, HarDBlock2]:
+            c1 = ch[f]
+            args = [c1, *args[:]]
+        elif m is BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
             c2 = sum([ch[-1 if x == -1 else x + 1] for x in f])
@@ -356,13 +373,16 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 args[1] = [list(range(args[1] * 2))] * len(f)
         else:
             c2 = ch[f]
-
-        m_ = nn.Sequential(*[m(*args) for _ in range(n)]) if n > 1 else m(*args)
+        m_ = Sequential(*[m(*args) for _ in range(n)]) if n > 1 else m(*args)
         t = str(m)[8:-2].replace("__main__.", "")  # module type
         np = sum([x.numel() for x in m_.parameters()])  # number params
         m_.i, m_.f, m_.type, m_.np = i, f, t, np
         _LOGGER.warning(f"{i:>3}{f:>18}{n:>3}{np:10.0f}  {t:<40}{args:<30}")  # print
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)
         layers.append(m_)
-        ch.append(c2)
-    return nn.Sequential(*layers), sorted(save)
+        if m in [HarDBlock, HarDBlock2]:
+            c2 = m_.get_out_ch()
+            ch.append(c2)
+        else:
+            ch.append(c2)
+    return Sequential(*layers), sorted(save)
