@@ -101,7 +101,8 @@ def fuse_conv_and_bn(conv, bn):
         fusedconv.weight.copy_(torch.mm(w_bn, w_conv).view(fusedconv.weight.size()))
 
         # prepare spatial bias
-        b_conv = (torch.zeros(conv.weight.size(0), dtype=torch.float16, device=device)
+        b_conv = (
+            torch.zeros(conv.weight.size(0), dtype=torch.float16, device=device)
             if conv.bias is None
             else conv.bias
         )
@@ -163,7 +164,6 @@ class Detect(Module):
             "anchor_grid", a.clone().view(self.nl, 1, -1, 1, 1, 2)
         )  # shape(nl,1,na,1,1,2)
         self.m = ModuleList(Conv2d(x, self.no * self.na, 1) for x in ch)  # output conv
-
 
     def forward(self, x):
         z = []  # inference output
@@ -268,7 +268,6 @@ class Model(Module):
             y.append(x if m.i in self.save else None)  # save output
         return x
 
-
     def _initialize_biases(self, cf=None):
         m = self.model[-1]  # Detect() module
         for mi, s in zip(m.m, m.stride):  # from
@@ -304,6 +303,7 @@ class Model(Module):
     def info(self, verbose=False):  # print model information
         model_info(self, verbose)
 
+        
 def parse_model(d, ch):  # model_dict, input_channels(3)
     _LOGGER.warning(
         "\n{:>3}{:>18}{:>3}{:>10}  {:<40}{:<30}".format(
