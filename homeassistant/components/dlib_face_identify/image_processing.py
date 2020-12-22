@@ -20,8 +20,8 @@ from homeassistant.components.image_processing import (
 )
 from homeassistant.core import split_entity_id
 
-from .model import Backbone
 from .Retinaface import FaceDetector
+from .model import Backbone
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
