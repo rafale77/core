@@ -216,8 +216,7 @@ class FaceDetector:
     def preprocessor(self, img_raw):
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
         scale = torch.as_tensor(
-            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]],
-            device=self.device
+            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
         )
         img -= torch.tensor([104, 117, 123]).to(self.device)
         img = img.permute(2, 0, 1).unsqueeze(0)
@@ -264,7 +263,7 @@ class FaceDetector:
                 img.shape[3],
                 img.shape[2],
             ],
-            device=(self.device)
+            device=(self.device),
         )
         landmarks = landmarks * scale1
 
