@@ -181,7 +181,7 @@ class RetinaFace(Module):
         :param cfg:  Network related settings.
         """
         super().__init__()
-        
+
         backbone = models.resnet50(pretrained=cfg["pretrain"])
 
         self.body = IntermediateLayerGetter(backbone, cfg["return_layers"])
