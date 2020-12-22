@@ -1,8 +1,8 @@
 # This file contains modules common to various models
 from collections import defaultdict
 import math
-import mish_cuda as Mish
 
+import mish_cuda as Mish
 import torch
 from torch.nn import (
     AdaptiveAvgPool2d,
