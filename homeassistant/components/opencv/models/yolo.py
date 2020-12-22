@@ -303,7 +303,7 @@ class Model(Module):
     def info(self, verbose=False):  # print model information
         model_info(self, verbose)
 
-        
+
 def parse_model(d, ch):  # model_dict, input_channels(3)
     _LOGGER.warning(
         "\n{:>3}{:>18}{:>3}{:>10}  {:<40}{:<30}".format(
