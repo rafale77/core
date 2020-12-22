@@ -98,7 +98,8 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
         if classes:
             x = x[
                 (
-                    x[:, 5:6] == torch.as_tensor(classes, dtype=x.dtype, device=x.device)
+                    x[:, 5:6]
+                    == torch.as_tensor(classes, dtype=x.dtype, device=x.device)
                 ).any(1)
             ]
 
@@ -137,17 +138,25 @@ def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), scaleup=False):
         img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
 
     # Compute padding
-    dw, dh = (new_shape[1] - new_unpad[0]) / 2, (new_shape[0] - new_unpad[1]) / 2  # wh padding
+    dw, dh = (new_shape[1] - new_unpad[0]) / 2, (new_shape[0] - new_unpad[1]) / 2
     top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
     left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
-    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+    img = cv2.copyMakeBorder(
+        img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
+    )  # add border
     return img
 
 
 def preprocessor(img_raw, imgsz, dev):
     """Image conversion."""
     img_raw = letterbox(img_raw, new_shape=imgsz)  # resize
-    img = torch.as_tensor(img_raw, dtype=torch.float16, device=dev)[:, :, [ 2, 1, 0]].div(255).permute(2, 0, 1).unsqueeze(0)
+    img = (
+        torch.as_tensor(
+        img_raw, dtype=torch.float16, device=dev)[:, :, [ 2, 1, 0]]
+        .div(255)
+        .permute(2, 0, 1)
+        .unsqueeze(0)
+    )
     return img
 
 
@@ -211,7 +220,9 @@ class OpenCVImageProcessor(ImageProcessingEntity):
 
         img = preprocessor(image, imgsz, device)
         with torch.no_grad():
-            pred = non_max_suppression(model(img)[0], CONFIDENCE_THRESHOLD, NMS_THRESHOLD)
+            pred = non_max_suppression(
+                model(img)[0], CONFIDENCE_THRESHOLD, NMS_THRESHOLD
+            )
         self._matches = []
         for i, det in enumerate(pred):  # detections per image
             if det is not None and len(det) > 0:
