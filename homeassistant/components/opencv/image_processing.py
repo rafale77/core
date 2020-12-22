@@ -151,8 +151,7 @@ def preprocessor(img_raw, imgsz, dev):
     """Image conversion."""
     img_raw = letterbox(img_raw, new_shape=imgsz)  # resize
     img = (
-        torch.as_tensor(
-        img_raw, dtype=torch.float16, device=dev)[:, :, [ 2, 1, 0]]
+        torch.as_tensor(img_raw, dtype=torch.float16, device=dev)[:, :, [ 2, 1, 0]]
         .div(255)
         .permute(2, 0, 1)
         .unsqueeze(0)
