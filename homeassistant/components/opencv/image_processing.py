@@ -29,7 +29,7 @@ CONF_CLASSIFIER = "classifier"
 CONFIDENCE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.4
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-imgsz = int(640)
+imgsize = int(640)
 sys.path.insert(
     0,
     str(Path.home())
@@ -217,7 +217,7 @@ class OpenCVImageProcessor(ImageProcessingEntity):
     def process_image(self, image):
         """Process image."""
 
-        img = preprocessor(image, imgsz, device)
+        img = preprocessor(image, imgsize, device)
         with torch.no_grad():
             pred = non_max_suppression(
                 model(img)[0], CONFIDENCE_THRESHOLD, NMS_THRESHOLD
