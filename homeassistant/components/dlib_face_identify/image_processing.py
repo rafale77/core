@@ -33,10 +33,6 @@ def get_config():
     """Set configuration settings."""
     conf = edict()
     conf.model_path = home + "/model/"
-    conf.log_path = home
-    conf.save_path = home
-    conf.input_size = [112, 112]
-    conf.embedding_size = 512
     conf.net_depth = 50
     conf.drop_ratio = 0.6
     conf.net_mode = "ir_se"  # or "ir"
@@ -44,7 +40,6 @@ def get_config():
     conf.batch_size = 1  # irse net depth 50
     conf.facebank_path = Path(home + "recogface/")
     conf.threshold = 1
-    conf.face_limit = 10  # when inference, at maximum detect 10 faces in one image
     return conf
 
 
