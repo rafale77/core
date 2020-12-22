@@ -47,13 +47,13 @@ REFERENCE_FACIAL_POINTS = [
 DEFAULT_CROP_SIZE = (96, 112)
 
 
-def prior_box(cfg, image_size=None, device="cpu"):
+def prior_box(cf, image_size=None, device="cpu"):
     """Boxes for Face."""
-    steps = cfg["steps"]
+    steps = cf["steps"]
     feature_maps = [
         [ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps
     ]
-    min_sizes_ = cfg["min_sizes"]
+    min_sizes_ = cf["min_sizes"]
     anchors = []
 
     for k, f in enumerate(feature_maps):
