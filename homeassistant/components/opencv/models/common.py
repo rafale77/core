@@ -426,7 +426,7 @@ class HarDBlock2(Module):
 
         cur_ch = in_channels
         for i in range(n_layers):
-            accum_out_ch = sum( self.out_partition[i])
+            accum_out_ch = sum(self.out_partition[i])
             real_out_ch = self.out_partition[i][0]
             conv_layers_.append(
                 Conv2d(
@@ -447,8 +447,8 @@ class HarDBlock2(Module):
         for i in range(len(self.conv_layers)):
             link = self.links[i].copy()
             link_ch = [
-                blk.layers[k-1][0].weight.shape[0]
-                if k > 0 
+                blk.layers[k - 1][0].weight.shape[0]
+                if k > 0
                 else blk.layers[0][0].weight.shape[1]
                 for k in link
             ]
