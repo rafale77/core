@@ -17,7 +17,7 @@ from torch.nn import (
 )
 
 # from mish_cuda import MishCuda as Mish
-from mc import MishCuda as Mish
+import mish_cuda as Mish
 
 # flake8: noqa
 
