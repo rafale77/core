@@ -251,11 +251,8 @@ class CombConvLayer(Sequential):
 class DWConvLayer(Sequential):
     def __init__(self, in_channels, out_channels, stride=1, bias=False):
         super().__init__()
-        out_ch = out_channels
 
         groups = in_channels
-        kernel = 3
-
         self.add_module(
             "dwconv",
             Conv2d(
@@ -341,7 +338,6 @@ class HarDBlock(Module):
         for i in range(n_layers):
             outch, inch, link = self.get_link(i + 1, in_channels, growth_rate, grmul)
             self.links.append(link)
-            use_relu = residual_out
             if dwconv:
                 layers_.append(CombConvLayer(inch, outch))
             else:
@@ -419,7 +415,7 @@ class HarDBlock2(Module):
         self.out_partition = defaultdict(list)
 
         for i in range(n_layers):
-            outch, inch, link = self.get_link(i + 1, in_channels, growth_rate, grmul)
+            outch, _, link = self.get_link(i + 1, in_channels, growth_rate, grmul)
             self.links.append(link)
             for j in link:
                 self.out_partition[j].append(outch)
