@@ -200,7 +200,8 @@ class FaceDetector:
             name = k[7:]  # remove `module.`
             new_state_dict[name] = v
         self.model = RetinaFace(cfg).to(device)
-        self.model.load_state_dict(new_state_dict).eval()
+        self.model.load_state_dict(new_state_dict)
+        self.model.eval()
         self.cfg = cfg
         # setting for face detection
         self.thresh = confidence_threshold
