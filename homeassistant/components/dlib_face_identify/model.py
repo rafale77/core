@@ -12,13 +12,13 @@ from torch.nn import (
     MaxPool2d,
     Module,
     ModuleList,
-    Parameter,
     PReLU,
     ReLU,
     Sequential,
     Sigmoid,
 )
 import torch.nn.functional as F
+import torchvision.models as models
 from torchvision.models._utils import IntermediateLayerGetter
 
 # flake8: noqa
@@ -75,10 +75,10 @@ class SSH(Module):
         )
         self.conv7x7_3 = conv_bn_no_relu(out_channel // 4, out_channel // 4, stride=1)
 
-    def forward(self, input):
-        conv3X3 = self.conv3X3(input)
+    def forward(self, inpt):
+        conv3X3 = self.conv3X3(inpt)
 
-        conv5X5_1 = self.conv5X5_1(input)
+        conv5X5_1 = self.conv5X5_1(inpt)
         conv5X5 = self.conv5X5_2(conv5X5_1)
 
         conv7X7_2 = self.conv7X7_2(conv5X5_1)
@@ -108,13 +108,13 @@ class FPN(Module):
         self.merge1 = conv_bn(out_channels, out_channels, leaky=leaky)
         self.merge2 = conv_bn(out_channels, out_channels, leaky=leaky)
 
-    def forward(self, input):
-        # names = list(input.keys())
-        input = list(input.values())
+    def forward(self, inpt):
+        # names = list(inpt.keys())
+        inpt = list(inpt.values())
 
-        output1 = self.output1(input[0])
-        output2 = self.output2(input[1])
-        output3 = self.output3(input[2])
+        output1 = self.output1(inpt[0])
+        output2 = self.output2(inpt[1])
+        output3 = self.output3(inpt[2])
 
         up3 = F.interpolate(
             output3, size=[output2.size(2), output2.size(3)], mode="nearest"
@@ -181,9 +181,7 @@ class RetinaFace(Module):
         :param cfg:  Network related settings.
         """
         super().__init__()
-
-        import torchvision.models as models
-
+        
         backbone = models.resnet50(pretrained=cfg["pretrain"])
 
         self.body = IntermediateLayerGetter(backbone, cfg["return_layers"])
@@ -207,19 +205,19 @@ class RetinaFace(Module):
 
     def _make_class_head(self, fpn_num=3, inchannels=64, anchor_num=2):
         classhead = ModuleList()
-        for i in range(fpn_num):
+        for _ in range(fpn_num):
             classhead.append(ClassHead(inchannels, anchor_num))
         return classhead
 
     def _make_bbox_head(self, fpn_num=3, inchannels=64, anchor_num=2):
         bboxhead = ModuleList()
-        for i in range(fpn_num):
+        for _ in range(fpn_num):
             bboxhead.append(BboxHead(inchannels, anchor_num))
         return bboxhead
 
     def _make_landmark_head(self, fpn_num=3, inchannels=64, anchor_num=2):
         landmarkhead = ModuleList()
-        for i in range(fpn_num):
+        for _ in range(fpn_num):
             landmarkhead.append(LandmarkHead(inchannels, anchor_num))
         return landmarkhead
 
