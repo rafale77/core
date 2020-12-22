@@ -7,8 +7,6 @@ import cv2
 import torch
 import voluptuous as vol
 
-# pylint: disable=import-error
-
 from homeassistant.components.image_processing import (
     CONF_CONFIDENCE,
     CONF_ENTITY_ID,
@@ -19,6 +17,9 @@ from homeassistant.components.image_processing import (
 )
 from homeassistant.core import split_entity_id
 import homeassistant.helpers.config_validation as cv
+
+# pylint: disable=import-error
+
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/model/"
