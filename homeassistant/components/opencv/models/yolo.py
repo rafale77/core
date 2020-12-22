@@ -101,10 +101,7 @@ def fuse_conv_and_bn(conv, bn):
         fusedconv.weight.copy_(torch.mm(w_bn, w_conv).view(fusedconv.weight.size()))
 
         # prepare spatial bias
-        b_conv = (
-            torch.zeros(
-                conv.weight.size(0), dtype=torch.float16, device=device
-            )
+        b_conv = (torch.zeros(conv.weight.size(0), dtype=torch.float16, device=device)
             if conv.bias is None
             else conv.bias
         )
@@ -165,9 +162,7 @@ class Detect(Module):
         self.register_buffer(
             "anchor_grid", a.clone().view(self.nl, 1, -1, 1, 1, 2)
         )  # shape(nl,1,na,1,1,2)
-        self.m = ModuleList(
-            Conv2d(x, self.no * self.na, 1) for x in ch
-        )  # output conv
+        self.m = ModuleList(Conv2d(x, self.no * self.na, 1) for x in ch)  # output conv
 
 
     def forward(self, x):
@@ -229,7 +224,9 @@ class Model(Module):
             s = 128  # 2x min stride
             m.stride = torch.as_tensor(
                 [s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))]
-            ).to(device)  # forward
+            ).to(
+                device
+            )  # forward
             m.anchors /= m.stride.view(-1, 1, 1)
             check_anchor_order(m)
             self.stride = m.stride
@@ -239,7 +236,6 @@ class Model(Module):
         # Init weights, biases
         initialize_weights(self)
         self.info()
-
 
     def forward(self, x, augment=False):
         if augment:
@@ -258,7 +254,6 @@ class Model(Module):
                 y.append(yi)
             return torch.cat(y, 1), None  # augmented inference, train
         return self.forward_once(x)  # single-scale inference, train
-
 
     def forward_once(self, x):
         y = []  # outputs
@@ -286,7 +281,6 @@ class Model(Module):
             )  # cls
             mi.bias = Parameter(b.view(-1), requires_grad=True)
 
-
     def _print_biases(self):
         m = self.model[-1]  # Detect() module
         for mi in m.m:  # from
@@ -295,7 +289,6 @@ class Model(Module):
                 ("%6g Conv2d.bias:" + "%10.3g" * 6)
                 % (mi.weight.shape[1], *b[:5].mean(1).tolist(), b[5:].mean())
             )
-
 
     def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
         _LOGGER.warning("Fusing layers... ")
@@ -310,7 +303,6 @@ class Model(Module):
 
     def info(self, verbose=False):  # print model information
         model_info(self, verbose)
-
 
 def parse_model(d, ch):  # model_dict, input_channels(3)
     _LOGGER.warning(
