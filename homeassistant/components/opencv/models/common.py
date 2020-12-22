@@ -80,9 +80,7 @@ class BottleneckCSP(Module):
         self.cv4 = Conv(2 * c_, c2, 1, 1)
         self.bn = BatchNorm2d(2 * c_)  # applied to cat(cv2, cv3)
         self.act = Mish()
-        self.m = Sequential(
-            *[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)]
-        )
+        self.m = Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
 
     def forward(self, x):
         y1 = self.cv3(self.m(self.cv1(x)))
@@ -241,39 +239,65 @@ class Classify(Module):
 
 
 class CombConvLayer(Sequential):
-    def __init__(self, in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False):
+    def __init__(
+        self, in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False
+    ):
         super().__init__()
-        self.add_module('layer1',ConvLayer(in_channels, out_channels, kernel))
-        self.add_module('layer2',DWConvLayer(out_channels, out_channels, stride=stride))
+        self.add_module("layer1",ConvLayer(in_channels, out_channels, kernel))
+        self.add_module(
+            "layer2",DWConvLayer(out_channels, out_channels, stride=stride)
+        )
 
     def forward(self, x):
         return super().forward(x)
 
+
 class DWConvLayer(Sequential):
-    def __init__(self, in_channels, out_channels,  stride=1,  bias=False):
+    def __init__(self, in_channels, out_channels, stride=1, bias=False):
         super().__init__()
         out_ch = out_channels
 
         groups = in_channels
         kernel = 3
-        #print(kernel, 'x', kernel, 'x', out_channels, 'x', out_channels, 'DepthWise')
 
-        self.add_module('dwconv', Conv2d(groups, groups, kernel_size=3,
-                                          stride=stride, padding=1, groups=groups, bias=bias))
-        self.add_module('norm', BatchNorm2d(groups))
+        self.add_module(
+            "dwconv",
+            Conv2d(
+                groups,
+                groups,
+                kernel_size=3,
+                stride=stride,
+                padding=1,
+                groups=groups,
+                bias=bias,
+            ),
+        )
+        self.add_module("norm", BatchNorm2d(groups))
     def forward(self, x):
         return super().forward(x)
 
+
 class ConvLayer(Sequential):
-    def __init__(self, in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=False):
+    def __init__(
+        self, in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=False
+    ):
         super().__init__()
         out_ch = out_channels
         groups = 1
-        #print(kernel, 'x', kernel, 'x', in_channels, 'x', out_channels)
-        self.add_module('conv', Conv2d(in_channels, out_ch, kernel_size=kernel,
-                                          stride=stride, padding=kernel//2, groups=groups, bias=bias))
-        self.add_module('norm', BatchNorm2d(out_ch))
-        self.add_module('relu', ReLU6(True))
+        self.add_module(
+            "conv",
+            Conv2d(
+                in_channels,
+                out_ch,
+                kernel_size=kernel,
+                stride=stride,
+                padding=kernel//2,
+                groups=groups,
+                bias=bias,
+            ),
+        )
+        self.add_module("norm", BatchNorm2d(out_ch))
+        self.add_module("relu", ReLU6(True))
     def forward(self, x):
         return super().forward(x)
 
@@ -294,21 +318,30 @@ class HarDBlock(Module):
         out_channels = int(int(out_channels + 1) / 2) * 2
         in_channels = 0
         for i in link:
-            ch,_,_ = self.get_link(i, base_ch, growth_rate, grmul)
+            ch, _, _ = self.get_link(i, base_ch, growth_rate, grmul)
             in_channels += ch
         return out_channels, in_channels, link
 
     def get_out_ch(self):
         return self.out_channels
 
-    def __init__(self, in_channels, growth_rate, grmul, n_layers, keepBase=False, residual_out=False, dwconv=False):
+    def __init__(
+        self,
+        in_channels,
+        growth_rate,
+        grmul,
+        n_layers,
+        keepBase=False,
+        residual_out=False,
+        dwconv=False
+    ):
         super().__init__()
         self.keepBase = keepBase
         self.links = []
         layers_ = []
-        self.out_channels = 0 # if upsample else in_channels
+        self.out_channels = 0  # if upsample else in_channels
         for i in range(n_layers):
-            outch, inch, link = self.get_link(i+1, in_channels, growth_rate, grmul)
+            outch, inch, link = self.get_link(i + 1, in_channels, growth_rate, grmul)
             self.links.append(link)
             use_relu = residual_out
             if dwconv:
@@ -318,7 +351,6 @@ class HarDBlock(Module):
 
             if (i % 2 == 0) or (i == n_layers - 1):
                 self.out_channels += outch
-        #print("Blk out =",self.out_channels)
         self.layers = ModuleList(layers_)
 
     def forward(self, x):
@@ -339,7 +371,7 @@ class HarDBlock(Module):
         t = len(layers_)
         out_ = []
         for i in range(t):
-            if (i == 0 and self.keepBase) or (i == t-1) or (i%2 == 1):
+            if (i == 0 and self.keepBase) or (i == t - 1) or (i % 2 == 1):
                 out_.append(layers_[i])
         out = torch.cat(out_, 1)
         return out
@@ -349,8 +381,9 @@ class BRLayer(Sequential):
     def __init__(self, in_channels):
         super().__init__()
 
-        self.add_module('norm', BatchNorm2d(in_channels))
-        self.add_module('relu', ReLU(True))
+        self.add_module("norm", BatchNorm2d(in_channels))
+        self.add_module("relu", ReLU(True))
+
     def forward(self, x):
         return super().forward(x)
 
@@ -371,7 +404,7 @@ class HarDBlock2(Module):
         out_channels = int(int(out_channels + 1) / 2) * 2
         in_channels = 0
         for i in link:
-            ch,_,_ = self.get_link(i, base_ch, growth_rate, grmul)
+            ch, _, _ = self.get_link(i, base_ch, growth_rate, grmul)
             in_channels += ch
         return out_channels, in_channels, link
 
@@ -388,7 +421,7 @@ class HarDBlock2(Module):
         self.out_partition = defaultdict(list)
 
         for i in range(n_layers):
-            outch, inch, link = self.get_link(i+1, in_channels, growth_rate, grmul)
+            outch, inch, link = self.get_link(i + 1, in_channels, growth_rate, grmul)
             self.links.append(link)
             for j in link:
                 self.out_partition[j].append(outch)
@@ -397,13 +430,15 @@ class HarDBlock2(Module):
         for i in range(n_layers):
             accum_out_ch = sum( self.out_partition[i] )
             real_out_ch = self.out_partition[i][0]
-            #print( self.links[i],  self.out_partition[i], accum_out_ch)
-            conv_layers_.append( Conv2d(cur_ch, accum_out_ch, kernel_size=3, stride=1, padding=1, bias=True) )
-            bnrelu_layers_.append( BRLayer(real_out_ch) )
+            conv_layers_.append(
+                Conv2d(
+                    cur_ch, accum_out_ch, kernel_size=3, stride=1, padding=1, bias=True
+                )
+            )
+            bnrelu_layers_.append( BRLayer(real_out_ch))
             cur_ch = real_out_ch
             if (i % 2 == 0) or (i == n_layers - 1):
                 self.out_channels += real_out_ch
-        #print("Blk out =",self.out_channels)
 
         self.conv_layers = ModuleList(conv_layers_)
         self.bnrelu_layers = ModuleList(bnrelu_layers_)
@@ -413,26 +448,29 @@ class HarDBlock2(Module):
         in_ch = blk.layers[0][0].weight.shape[1]
         for i in range(len(self.conv_layers)):
             link = self.links[i].copy()
-            link_ch = [blk.layers[k-1][0].weight.shape[0] if k > 0 else
-                       blk.layers[0  ][0].weight.shape[1] for k in link]
+            link_ch = [
+                blk.layers[k-1][0].weight.shape[0]
+                if k > 0 else
+                blk.layers[0  ][0].weight.shape[1]
+                for k in link
+            ]
             part = self.out_partition[i]
             w_src = blk.layers[i][0].weight
             b_src = blk.layers[i][0].bias
 
-
-            self.conv_layers[i].weight[0:part[0], :, :,:] = w_src[:, 0:in_ch, :,:]
+            self.conv_layers[i].weight[0 : part[0], :, :, :] = w_src[:, 0:in_ch, :, :]
             self.layer_bias.append(b_src)
 
             if b_src is not None:
                 if trt:
-                    self.conv_layers[i].bias[1:part[0]] = b_src[1:]
+                    self.conv_layers[i].bias[1 : part[0]] = b_src[1:]
                     self.conv_layers[i].bias[0] = b_src[0]
-                    self.conv_layers[i].bias[part[0]:] = 0
+                    self.conv_layers[i].bias[part[0] :] = 0
                     self.layer_bias[i] = None
                 else:
-                    #for pytorch, add bias with standalone tensor is more efficient than within conv.bias
-                    #this is because the amount of non-zero bias is small,
-                    #but if we use conv.bias, the number of bias will be much larger
+                    # for pytorch, add bias with standalone tensor is more efficient than within conv.bias
+                    # this is because the amount of non-zero bias is small,
+                    # but if we use conv.bias, the number of bias will be much larger
                     self.conv_layers[i].bias = None
             else:
                 self.conv_layers[i].bias = None
@@ -441,24 +479,23 @@ class HarDBlock2(Module):
             link_ch.reverse()
             link.reverse()
             if len(link) > 1:
-                for j in range(1, len(link) ):
-                    ly  = link[j]
-                    part_id  = self.out_partition[ly].index(part[0])
-                    chos = sum( self.out_partition[ly][0:part_id] )
+                for j in range(1, len(link)):
+                    ly = link[j]
+                    part_id = self.out_partition[ly].index(part[0])
+                    chos = sum( self.out_partition[ly][0:part_id])
                     choe = chos + part[0]
-                    chis = sum( link_ch[0:j] )
+                    chis = sum( link_ch[0:j])
                     chie = chis + link_ch[j]
-                    self.conv_layers[ly].weight[chos:choe, :,:,:] = w_src[:, chis:chie,:,:]
+                    self.conv_layers[ly].weight[chos:choe, :, :, :] = w_src[
+                        :, chis:chie, :, :
+                    ]
 
-            #update BatchNorm or remove it if there is no BatchNorm in the v1 block
+            # update BatchNorm or remove it if there is no BatchNorm in the v1 block
             self.bnrelu_layers[i] = None
             if isinstance(blk.layers[i][1], BatchNorm2d):
-                self.bnrelu_layers[i] = Sequential(
-                         blk.layers[i][1],
-                         blk.layers[i][2])
+                self.bnrelu_layers[i] = Sequential(blk.layers[i][1], blk.layers[i][2])
             else:
                 self.bnrelu_layers[i] = blk.layers[i][1]
-
 
     def forward(self, x):
         layers_ = []
@@ -471,23 +508,23 @@ class HarDBlock2(Module):
             xout = self.conv_layers[i](xin)
             layers_.append(xout)
 
-            xin = xout[:,0:part[0],:,:] if len(part) > 1 else xout
-            #print(i)
-            #if self.layer_bias[i] is not None:
+            xin = xout[:, 0 : part[0],: ,:] if len(part) > 1 else xout
+            # print(i)
+            # if self.layer_bias[i] is not None:
             #    xin += self.layer_bias[i].view(1,-1,1,1)
 
             if len(link) > 1:
-                for j in range( len(link) - 1 ):
-                    ly  = link[j]
-                    part_id  = self.out_partition[ly].index(part[0])
-                    chs = sum( self.out_partition[ly][0:part_id] )
+                for j in range(len(link) - 1):
+                    ly = link[j]
+                    part_id = self.out_partition[ly].index(part[0])
+                    chs = sum(self.out_partition[ly][0:part_id])
                     che = chs + part[0]
 
-                    xin += layers_[ly][:,chs:che,:,:]
+                    xin += layers_[ly][: , chs:che,: ,:]
 
             xin = self.bnrelu_layers[i](xin)
 
-            if i%2 == 0 or i == len(self.conv_layers)-1:
+            if i % 2 == 0 or i == len(self.conv_layers) - 1:
                 outs_.append(xin)
 
         out = torch.cat(outs_, 1)
