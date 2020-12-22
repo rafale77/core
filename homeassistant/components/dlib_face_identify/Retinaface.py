@@ -1,9 +1,9 @@
 from collections import OrderedDict
+from itertools import product
 import logging
+from math import ceil
 
 import cv2
-from itertools import product
-from math import ceil
 import numpy as np
 from skimage import transform
 import torch
