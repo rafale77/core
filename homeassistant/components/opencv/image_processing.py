@@ -32,7 +32,7 @@ imgsz = int(640)
 sys.path.insert(
     0,
     str(Path.home())
-    + "/.local/lib/python3.7/site-packages/homeassistant/components/opencv/",
+    + "/.local/lib/python3.8/site-packages/homeassistant/components/opencv/",
 )
 model = torch.load(home + "yolov4-p5.pt", device)["model"].fuse().eval().half()
 with open(home + "cococlasses.txt") as f:
