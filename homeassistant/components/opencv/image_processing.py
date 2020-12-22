@@ -120,7 +120,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
 
 
 def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), scaleup=False):
-    """Resize and pad image to shape"""
+    """Resize and pad image to shape."""
     shape = img.shape[:2]  # current shape [height, width]
     if isinstance(new_shape, int):
         new_shape = (new_shape, new_shape)
