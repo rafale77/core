@@ -98,9 +98,7 @@ class BottleneckCSP2(Module):
         self.cv3 = Conv(2 * c_, c2, 1, 1)
         self.bn = BatchNorm2d(2 * c_)
         self.act = Mish()
-        self.m = Sequential(
-            *[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)]
-        )
+        self.m = Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
 
     def forward(self, x):
         x1 = self.cv1(x)
@@ -241,9 +239,9 @@ class CombConvLayer(Sequential):
         self, in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False
     ):
         super().__init__()
-        self.add_module("layer1",ConvLayer(in_channels, out_channels, kernel))
+        self.add_module("layer1", ConvLayer(in_channels, out_channels, kernel))
         self.add_module(
-            "layer2",DWConvLayer(out_channels, out_channels, stride=stride)
+            "layer2", DWConvLayer(out_channels, out_channels, stride=stride)
         )
 
     def forward(self, x):
@@ -271,6 +269,7 @@ class DWConvLayer(Sequential):
             ),
         )
         self.add_module("norm", BatchNorm2d(groups))
+
     def forward(self, x):
         return super().forward(x)
 
@@ -289,13 +288,14 @@ class ConvLayer(Sequential):
                 out_ch,
                 kernel_size=kernel,
                 stride=stride,
-                padding=kernel//2,
+                padding=kernel // 2,
                 groups=groups,
                 bias=bias,
             ),
         )
         self.add_module("norm", BatchNorm2d(out_ch))
         self.add_module("relu", ReLU6(True))
+
     def forward(self, x):
         return super().forward(x)
 
@@ -331,7 +331,7 @@ class HarDBlock(Module):
         n_layers,
         keepBase=False,
         residual_out=False,
-        dwconv=False
+        dwconv=False,
     ):
         super().__init__()
         self.keepBase = keepBase
@@ -426,14 +426,14 @@ class HarDBlock2(Module):
 
         cur_ch = in_channels
         for i in range(n_layers):
-            accum_out_ch = sum( self.out_partition[i] )
+            accum_out_ch = sum( self.out_partition[i])
             real_out_ch = self.out_partition[i][0]
             conv_layers_.append(
                 Conv2d(
                     cur_ch, accum_out_ch, kernel_size=3, stride=1, padding=1, bias=True
                 )
             )
-            bnrelu_layers_.append( BRLayer(real_out_ch))
+            bnrelu_layers_.append(BRLayer(real_out_ch))
             cur_ch = real_out_ch
             if (i % 2 == 0) or (i == n_layers - 1):
                 self.out_channels += real_out_ch
@@ -448,8 +448,8 @@ class HarDBlock2(Module):
             link = self.links[i].copy()
             link_ch = [
                 blk.layers[k-1][0].weight.shape[0]
-                if k > 0 else
-                blk.layers[0  ][0].weight.shape[1]
+                if k > 0 
+                else blk.layers[0][0].weight.shape[1]
                 for k in link
             ]
             part = self.out_partition[i]
@@ -480,9 +480,9 @@ class HarDBlock2(Module):
                 for j in range(1, len(link)):
                     ly = link[j]
                     part_id = self.out_partition[ly].index(part[0])
-                    chos = sum( self.out_partition[ly][0:part_id])
+                    chos = sum(self.out_partition[ly][0:part_id])
                     choe = chos + part[0]
-                    chis = sum( link_ch[0:j])
+                    chis = sum(link_ch[0:j])
                     chie = chis + link_ch[j]
                     self.conv_layers[ly].weight[chos:choe, :, :, :] = w_src[
                         :, chis:chie, :, :
@@ -506,7 +506,7 @@ class HarDBlock2(Module):
             xout = self.conv_layers[i](xin)
             layers_.append(xout)
 
-            xin = xout[:, 0 : part[0],: ,:] if len(part) > 1 else xout
+            xin = xout[:, 0 : part[0], :, :] if len(part) > 1 else xout
             # print(i)
             # if self.layer_bias[i] is not None:
             #    xin += self.layer_bias[i].view(1,-1,1,1)
@@ -518,7 +518,7 @@ class HarDBlock2(Module):
                     chs = sum(self.out_partition[ly][0:part_id])
                     che = chs + part[0]
 
-                    xin += layers_[ly][: , chs:che,: ,:]
+                    xin += layers_[ly][:, chs:che, :, :]
 
             xin = self.bnrelu_layers[i](xin)
 
