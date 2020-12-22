@@ -1,6 +1,7 @@
 # This file contains modules common to various models
 from collections import defaultdict
 import math
+import mish_cuda as Mish
 
 import torch
 from torch.nn import (
@@ -15,9 +16,6 @@ from torch.nn import (
     ReLU6,
     Sequential,
 )
-
-# from mish_cuda import MishCuda as Mish
-import mish_cuda as Mish
 
 # flake8: noqa
 
