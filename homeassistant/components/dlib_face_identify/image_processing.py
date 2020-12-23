@@ -35,7 +35,6 @@ def get_config():
     conf.model_path = home + "/model/"
     conf.net_depth = 50
     conf.drop_ratio = 0.6
-    conf.net_mode = "ir_se"  # or "ir"
     conf.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     conf.batch_size = 1  # irse net depth 50
     conf.facebank_path = Path(home + "recogface/")
@@ -71,7 +70,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         self._camera = camera_entity
         self.conf = get_config()
         self.arcmodel = Backbone(
-            self.conf.net_depth, self.conf.drop_ratio, self.conf.net_mode
+            self.conf.net_depth, self.conf.drop_ratio
         ).to(self.device)
         try:
             self.arcmodel.load_state_dict(
