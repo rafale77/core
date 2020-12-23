@@ -92,6 +92,17 @@ def comb_conv_layer(
     )
 
 
+def brlayer(in_channels):
+    return Sequential(
+        OrderedDict(
+            [
+                ("norm", BatchNorm2d(in_channels)),
+                ("relu", ReLU(True)),
+            ]
+        )
+    )
+
+
 class Conv(Module):
     # Standard convolution
     def __init__(
@@ -368,17 +379,6 @@ class HarDBlock(Module):
         return out
 
 
-class BRLayer(Sequential):
-    def __init__(self, in_channels):
-        super().__init__()
-
-        self.add_module("norm", BatchNorm2d(in_channels))
-        self.add_module("relu", ReLU(True))
-
-    def forward(self, x):
-        return super().forward(x)
-
-
 class HarDBlock2(Module):
     def get_link(self, layer, base_ch, growth_rate, grmul):
         if layer == 0:
@@ -426,7 +426,7 @@ class HarDBlock2(Module):
                     cur_ch, accum_out_ch, kernel_size=3, stride=1, padding=1, bias=True
                 )
             )
-            bnrelu_layers_.append(BRLayer(real_out_ch))
+            bnrelu_layers_.append(brlayer(real_out_ch))
             cur_ch = real_out_ch
             if (i % 2 == 0) or (i == n_layers - 1):
                 self.out_channels += real_out_ch
