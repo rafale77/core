@@ -2,7 +2,7 @@
 from collections import OrderedDict, defaultdict
 import math
 
-import mish_cuda as Mish
+from mish_cuda import MishCuda as Mish
 import torch
 from torch.nn import (
     AdaptiveAvgPool2d,
