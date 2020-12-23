@@ -1,4 +1,5 @@
 from collections import namedtuple
+import logging
 
 import torch
 from torch.nn import (
@@ -21,6 +22,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 from torchvision.models._utils import IntermediateLayerGetter
 
+_LOGGER = logging.getLogger(__name__)
 # flake8: noqa
 
 
@@ -42,17 +44,6 @@ def conv_bn_no_relu(inp, oup, stride):
 def conv_bn1X1(inp, oup, stride, leaky=0):
     return Sequential(
         Conv2d(inp, oup, 1, stride, padding=0, bias=False),
-        BatchNorm2d(oup),
-        LeakyReLU(negative_slope=leaky, inplace=True),
-    )
-
-
-def conv_dw(inp, oup, stride, leaky=0.1):
-    return Sequential(
-        Conv2d(inp, inp, 3, stride, 1, groups=inp, bias=False),
-        BatchNorm2d(inp),
-        LeakyReLU(negative_slope=leaky, inplace=True),
-        Conv2d(inp, oup, 1, 1, 0, bias=False),
         BatchNorm2d(oup),
         LeakyReLU(negative_slope=leaky, inplace=True),
     )
@@ -283,30 +274,6 @@ class SEModule(Module):
         return module_input * x
 
 
-class bottleneck_IR(Module):
-    def __init__(self, in_channel, depth, stride):
-        super().__init__()
-        if in_channel == depth:
-            self.shortcut_layer = MaxPool2d(1, stride)
-        else:
-            self.shortcut_layer = Sequential(
-                Conv2d(in_channel, depth, (1, 1), stride, bias=False),
-                BatchNorm2d(depth),
-            )
-        self.res_layer = Sequential(
-            BatchNorm2d(in_channel),
-            Conv2d(in_channel, depth, (3, 3), (1, 1), 1, bias=False),
-            PReLU(depth),
-            Conv2d(depth, depth, (3, 3), stride, 1, bias=False),
-            BatchNorm2d(depth),
-        )
-
-    def forward(self, x):
-        shortcut = self.shortcut_layer(x)
-        res = self.res_layer(x)
-        return res + shortcut
-
-
 class bottleneck_IR_SE(Module):
     def __init__(self, in_channel, depth, stride):
         super().__init__()
@@ -368,15 +335,10 @@ def get_blocks(num_layers):
 
 
 class Backbone(Module):
-    def __init__(self, num_layers, drop_ratio, mode="ir"):
+    def __init__(self, num_layers, drop_ratio):
         super().__init__()
         assert num_layers in [50, 100, 152], "num_layers should be 50,100, or 152"
-        assert mode in ["ir", "ir_se"], "mode should be ir or ir_se"
         blocks = get_blocks(num_layers)
-        if mode == "ir":
-            unit_module = bottleneck_IR
-        elif mode == "ir_se":
-            unit_module = bottleneck_IR_SE
         self.input_layer = Sequential(
             Conv2d(3, 64, (3, 3), 1, 1, bias=False), BatchNorm2d(64), PReLU(64)
         )
@@ -391,7 +353,7 @@ class Backbone(Module):
         for block in blocks:
             for bottleneck in block:
                 modules.append(
-                    unit_module(
+                    bottleneck_IR_SE(
                         bottleneck.in_channel, bottleneck.depth, bottleneck.stride
                     )
                 )
