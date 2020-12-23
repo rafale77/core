@@ -69,9 +69,9 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         )
         self._camera = camera_entity
         self.conf = get_config()
-        self.arcmodel = Backbone(
-            self.conf.net_depth, self.conf.drop_ratio
-        ).to(self.device)
+        self.arcmodel = Backbone(self.conf.net_depth, self.conf.drop_ratio).to(
+            self.device
+        )
         try:
             self.arcmodel.load_state_dict(
                 torch.load(
