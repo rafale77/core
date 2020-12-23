@@ -194,7 +194,7 @@ class FaceDetector:
         # model = TRTModule()
         # model.load_state_dict(torch.load("/home/anhman/.homeassistant/model/retina_trt.pth"))
         self.device = device
-        state_dict = torch.load(weight_path)
+        state_dict = torch.load(weight_path, map_location=device)
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             name = k[7:]  # remove `module.`
