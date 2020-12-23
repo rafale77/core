@@ -63,14 +63,14 @@ def dw_conv_layer(in_channels, out_channels, stride=1, bias=False):
                 (
                     "dwconv",
                     Conv2d(
-                    groups,
-                    groups,
-                    kernel_size=3,
-                    stride=stride,
-                    padding=1,
-                    groups=groups,
-                    bias=bias,
-                    )
+                        groups,
+                        groups,
+                        kernel_size=3,
+                        stride=stride,
+                        padding=1,
+                        groups=groups,
+                        bias=bias,
+                    ),
                 ),
                 ("norm", BatchNorm2d(groups)),
             ]
