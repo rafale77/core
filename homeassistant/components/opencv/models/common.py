@@ -1,5 +1,5 @@
 # This file contains modules common to various models
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict, defaultdict 
 import math
 
 import mish_cuda as Mish
@@ -34,34 +34,56 @@ def DWConv(c1, c2, k=1, s=1, act=True):
 
 def conv_layer(in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=False):
    groups = 1
-   return Sequential(OrderedDict([
-       ("conv", Conv2d(
-                    in_channels,
-                    out_channels,
-                    kernel_size=kernel,
-                    stride=stride,
-                    padding=kernel // 2,
-                    groups=groups,
-                    bias=bias
+   return Sequential(
+       OrderedDict(
+           [
+               (
+                   "conv",
+                    Conv2d(
+                        in_channels,
+                        out_channels,
+                        kernel_size=kernel,
+                        stride=stride,
+                        padding=kernel // 2,
+                        groups=groups,
+                        bias=bias
                     ),
                 ),
-       ("norm", BatchNorm2d(out_channels)),
-       ("relu", ReLU6(inplace=True)),
-   ]))
+                ("norm", BatchNorm2d(out_channels)),
+                ("relu", ReLU6(inplace=True)),
+            ]
+       )
+   )
 
 def dw_conv_layer(in_channels, out_channels, stride=1, bias=False):
     groups = in_channels
-    return Sequential(OrderedDict([
-        ("dwconv", Conv2d(groups, groups, kernel_size=3,
-            stride=stride, padding=1, groups=groups, bias=bias)),
-        ("norm", BatchNorm2d(groups)),
-    ]))
+    return Sequential(
+        OrderedDict(
+            [
+                ("dwconv",
+                 Conv2d(
+                     groups,
+                     groups,
+                     kernel_size=3,
+                     stride=stride,
+                     padding=1,
+                     groups=groups,
+                     bias=bias)
+                ),
+                ("norm", BatchNorm2d(groups)),
+            ]
+        )
+    )
 
 def comb_conv_layer(in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False):
-    return Sequential(OrderedDict([
-        ("layer1", conv_layer(in_channels, out_channels, kernel)),
-        ("layer2", dw_conv_layer(out_channels, out_channels, stride=stride)),
-    ]))
+    return Sequential(
+        OrderedDict(
+            [
+                ("layer1", conv_layer(in_channels, out_channels, kernel)),
+                ("layer2", dw_conv_layer(out_channels, out_channels, stride=stride)),
+            ]
+        )
+    )
 
 
 class Conv(Module):
