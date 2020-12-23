@@ -52,8 +52,9 @@ def conv_layer(in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=
                 ("norm", BatchNorm2d(out_channels)),
                 ("relu", ReLU6(inplace=True)),
             ]
-       )
-   )
+        )
+    )
+
 
 def dw_conv_layer(in_channels, out_channels, stride=1, bias=False):
     groups = in_channels
@@ -76,6 +77,7 @@ def dw_conv_layer(in_channels, out_channels, stride=1, bias=False):
             ]
         )
     )
+
 
 def comb_conv_layer(
     in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False
