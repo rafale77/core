@@ -75,7 +75,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         ).to(self.device)
         try:
             self.arcmodel.load_state_dict(
-                torch.load(f"{self.conf.model_path}/model_ir_se50.pth")
+                torch.load(f"{self.conf.model_path}/model_ir_se50.pth", map_location=self.device)
             )
         except OSError:
             _LOGGER.warning("Arcface weight does not exist")
