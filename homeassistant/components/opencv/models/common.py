@@ -1,5 +1,5 @@
 # This file contains modules common to various models
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import math
 
 import mish_cuda as Mish
@@ -30,6 +30,38 @@ def autopad(k, p=None):  # kernel, padding
 def DWConv(c1, c2, k=1, s=1, act=True):
     # Depthwise convolution
     return Conv(c1, c2, k, s, g=math.gcd(c1, c2), act=act)
+
+
+def conv_layer(in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=False):
+   groups = 1
+   return Sequential(OrderedDict([
+       ("conv", Conv2d(
+                    in_channels,
+                    out_channels,
+                    kernel_size=kernel,
+                    stride=stride,
+                    padding=kernel // 2,
+                    groups=groups,
+                    bias=bias
+                    ),
+                ),
+       ("norm", BatchNorm2d(out_channels)),
+       ("relu", ReLU6(inplace=True)),
+   ]))
+
+def dw_conv_layer(in_channels, out_channels, stride=1, bias=False):
+    groups = in_channels
+    return Sequential(OrderedDict([
+        ("dwconv", Conv2d(groups, groups, kernel_size=3,
+            stride=stride, padding=1, groups=groups, bias=bias)),
+        ("norm", BatchNorm2d(groups)),
+    ]))
+
+def comb_conv_layer(in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False):
+    return Sequential(OrderedDict([
+        ("layer1", conv_layer(in_channels, out_channels, kernel)),
+        ("layer2", dw_conv_layer(out_channels, out_channels, stride=stride)),
+    ]))
 
 
 class Conv(Module):
@@ -234,69 +266,6 @@ class Classify(Module):
         return self.flat(self.conv(z))  # flatten to x(b,c2)
 
 
-class CombConvLayer(Sequential):
-    def __init__(
-        self, in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False
-    ):
-        super().__init__()
-        self.add_module("layer1", ConvLayer(in_channels, out_channels, kernel))
-        self.add_module(
-            "layer2", DWConvLayer(out_channels, out_channels, stride=stride)
-        )
-
-    def forward(self, x):
-        return super().forward(x)
-
-
-class DWConvLayer(Sequential):
-    def __init__(self, in_channels, out_channels, stride=1, bias=False):
-        super().__init__()
-
-        groups = in_channels
-        self.add_module(
-            "dwconv",
-            Conv2d(
-                groups,
-                groups,
-                kernel_size=3,
-                stride=stride,
-                padding=1,
-                groups=groups,
-                bias=bias,
-            ),
-        )
-        self.add_module("norm", BatchNorm2d(groups))
-
-    def forward(self, x):
-        return super().forward(x)
-
-
-class ConvLayer(Sequential):
-    def __init__(
-        self, in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=False
-    ):
-        super().__init__()
-        out_ch = out_channels
-        groups = 1
-        self.add_module(
-            "conv",
-            Conv2d(
-                in_channels,
-                out_ch,
-                kernel_size=kernel,
-                stride=stride,
-                padding=kernel // 2,
-                groups=groups,
-                bias=bias,
-            ),
-        )
-        self.add_module("norm", BatchNorm2d(out_ch))
-        self.add_module("relu", ReLU6(True))
-
-    def forward(self, x):
-        return super().forward(x)
-
-
 class HarDBlock(Module):
     def get_link(self, layer, base_ch, growth_rate, grmul):
         if layer == 0:
@@ -339,7 +308,7 @@ class HarDBlock(Module):
             outch, inch, link = self.get_link(i + 1, in_channels, growth_rate, grmul)
             self.links.append(link)
             if dwconv:
-                layers_.append(CombConvLayer(inch, outch))
+                layers_.append(comb_conv_layer(inch, outch))
             else:
                 layers_.append(Conv(inch, outch, k=3))
 
