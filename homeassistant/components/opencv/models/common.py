@@ -1,5 +1,5 @@
 # This file contains modules common to various models
-from collections import OrderedDict, defaultdict 
+from collections import OrderedDict, defaultdict
 import math
 
 import mish_cuda as Mish
@@ -33,12 +33,12 @@ def DWConv(c1, c2, k=1, s=1, act=True):
 
 
 def conv_layer(in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=False):
-   groups = 1
-   return Sequential(
-       OrderedDict(
-           [
-               (
-                   "conv",
+    groups = 1
+    return Sequential(
+        OrderedDict(
+            [
+                (
+                    "conv",
                     Conv2d(
                         in_channels,
                         out_channels,
@@ -46,7 +46,7 @@ def conv_layer(in_channels, out_channels, kernel=3, stride=1, dropout=0.1, bias=
                         stride=stride,
                         padding=kernel // 2,
                         groups=groups,
-                        bias=bias
+                        bias=bias,
                     ),
                 ),
                 ("norm", BatchNorm2d(out_channels)),
@@ -60,22 +60,26 @@ def dw_conv_layer(in_channels, out_channels, stride=1, bias=False):
     return Sequential(
         OrderedDict(
             [
-                ("dwconv",
-                 Conv2d(
-                     groups,
-                     groups,
-                     kernel_size=3,
-                     stride=stride,
-                     padding=1,
-                     groups=groups,
-                     bias=bias)
+                (
+                    "dwconv",
+                    Conv2d(
+                    groups,
+                    groups,
+                    kernel_size=3,
+                    stride=stride,
+                    padding=1,
+                    groups=groups,
+                    bias=bias,
+                    )
                 ),
                 ("norm", BatchNorm2d(groups)),
             ]
         )
     )
 
-def comb_conv_layer(in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False):
+def comb_conv_layer(
+    in_channels, out_channels, kernel=1, stride=1, dropout=0.1, bias=False
+):
     return Sequential(
         OrderedDict(
             [
