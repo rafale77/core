@@ -1,7 +1,7 @@
 """Support for Cameras with OpenCV as decoder."""
 import logging
 import os
-from threading import Thread
+from threading import Event, Thread
 
 import cv2
 import voluptuous as vol
@@ -61,8 +61,13 @@ class Client:
             grabbed = self._stream.grab()
             if not grabbed:
                 _LOGGER.warning("Stream Interrupted, Retrying")
-                self._stream.release()
-                self.open()
+                Event().wait(0.1)
+                grabbed = self._stream.grab()
+                if not grabbed:
+                    self._stream.release()
+                    _LOGGER.warning("Stream Interrupted, Restarting Stream")
+                    Event().wait(0.5)
+                    self.open()
 
     def read(self):
         """Retrieve most recent frame and decode."""
