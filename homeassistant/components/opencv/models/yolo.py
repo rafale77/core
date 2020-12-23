@@ -158,7 +158,7 @@ class Detect(Module):
         self.nl = len(anchors)  # number of detection layers
         self.na = len(anchors[0]) // 2  # number of anchors
         self.grid = [torch.zeros(1)] * self.nl  # init grid
-        a = torch.as_tensor(anchors).float().view(self.nl, -1, 2).to(device)
+        a = torch.as_tensor(anchors, device=device).float().view(self.nl, -1, 2)
         self.register_buffer("anchors", a)  # shape(nl,na,2)
         self.register_buffer(
             "anchor_grid", a.clone().view(self.nl, 1, -1, 1, 1, 2)
@@ -223,9 +223,8 @@ class Model(Module):
         if isinstance(m, Detect):
             s = 128  # 2x min stride
             m.stride = torch.as_tensor(
-                [s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))]
-            ).to(
-                device
+                [s / x.shape[-2] for x in self.forward(torch.zeros(1, ch, s, s))],
+                device,
             )  # forward
             m.anchors /= m.stride.view(-1, 1, 1)
             check_anchor_order(m)
