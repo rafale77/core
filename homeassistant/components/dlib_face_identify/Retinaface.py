@@ -122,6 +122,7 @@ def decode_landmark(pre, priors, variances):
     )
     return landms
 
+
 def get_reference_facial_points(output_size=(112, 112)):
 
     tmp_5pts = np.array(REFERENCE_FACIAL_POINTS)
