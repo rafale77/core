@@ -122,37 +122,6 @@ def decode_landmark(pre, priors, variances):
     )
     return landms
 
-
-def nms(box, scores, thresh):
-    x1 = box[:, 0]
-    y1 = box[:, 1]
-    x2 = box[:, 2]
-    y2 = box[:, 3]
-    zero = torch.as_tensor([0.0], device=scores.device)
-
-    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
-    order = scores.argsort(descending=True)
-
-    keep = []
-    while order.shape[0] > 0:
-        i = order[0]
-        keep.append(i)
-        xx1 = torch.max(x1[i], x1[order[1:]])
-        yy1 = torch.max(y1[i], y1[order[1:]])
-        xx2 = torch.min(x2[i], x2[order[1:]])
-        yy2 = torch.min(y2[i], y2[order[1:]])
-
-        w = torch.max(zero, xx2 - xx1 + 1)
-        h = torch.max(zero, yy2 - yy1 + 1)
-        inter = w * h
-        ovr = inter / (areas[i] + areas[order[1:]] - inter)
-
-        inds = torch.where(ovr <= thresh)[0]
-        order = order[inds + 1]
-
-    return keep
-
-
 def get_reference_facial_points(output_size=(112, 112)):
 
     tmp_5pts = np.array(REFERENCE_FACIAL_POINTS)
@@ -202,6 +171,7 @@ class FaceDetector:
         self.model = RetinaFace(cfg).to(device)
         self.model.load_state_dict(new_state_dict)
         self.model.eval()
+        # torch.quantization.fuse_modules(self.model, [['conv', 'bn']], inplace=True)
         self.cfg = cfg
         # setting for face detection
         self.thresh = confidence_threshold
@@ -280,7 +250,7 @@ class FaceDetector:
         scores = scores[order]
 
         # Do NMS
-        keep = nms(boxes, scores, self.nms_thresh)
+        keep = torch.ops.torchvision.nms(boxes, scores, self.nms_thresh)
         boxes = torch.abs(boxes[keep, :])
         scores = scores[:, None][keep, :]
         landmarks = landmarks[keep, :].reshape(-1, 5, 2)
