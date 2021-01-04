@@ -104,7 +104,8 @@ class ImageProcessingEntity(Entity):
     """Base entity class for image processing."""
 
     timeout = DEFAULT_TIMEOUT
-
+    self.det = "on"
+    
     def enable_detection(self):
         """Enable motion detection in the camera."""
         self.det = "on"
