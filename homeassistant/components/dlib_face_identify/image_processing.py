@@ -26,6 +26,8 @@ from .model import Backbone
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
 ATTR_NAME = "name"
+ATTR_FACES = "faces"
+ATTR_TOTAL_FACES = "total_faces"
 ATTR_MOTION = "detection"
 
 
@@ -137,7 +139,11 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     @property
     def state_attributes(self):
         """Return device specific state attributes."""
-        return {ATTR_MOTION: self._det}
+        return {
+            ATTR_FACES: self.faces,
+            ATTR_TOTAL_FACES: self.total_faces,
+            ATTR_MOTION: self._det,
+        }
 
     @property
     def camera_entity(self):
