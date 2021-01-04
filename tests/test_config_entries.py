@@ -1,6 +1,7 @@
 """Test the config manager."""
 import asyncio
 from datetime import timedelta
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -10,7 +11,6 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt
 
-from tests.async_mock import AsyncMock, patch
 from tests.common import (
     MockConfigEntry,
     MockEntity,
@@ -1537,6 +1537,51 @@ async def test_unique_id_ignore(hass, manager):
 
     assert entry.source == "ignore"
     assert entry.unique_id == "mock-unique-id"
+
+
+async def test_manual_add_overrides_ignored_entry(hass, manager):
+    """Test that we can ignore manually add entry, overriding ignored entry."""
+    hass.config.components.add("comp")
+    entry = MockConfigEntry(
+        domain="comp",
+        data={"additional": "data", "host": "0.0.0.0"},
+        unique_id="mock-unique-id",
+        state=config_entries.ENTRY_STATE_LOADED,
+        source=config_entries.SOURCE_IGNORE,
+    )
+    entry.add_to_hass(hass)
+
+    mock_integration(
+        hass,
+        MockModule("comp"),
+    )
+    mock_entity_platform(hass, "config_flow.comp", None)
+
+    class TestFlow(config_entries.ConfigFlow):
+        """Test flow."""
+
+        VERSION = 1
+
+        async def async_step_user(self, user_input=None):
+            """Test user step."""
+            await self.async_set_unique_id("mock-unique-id")
+            self._abort_if_unique_id_configured(
+                updates={"host": "1.1.1.1"}, reload_on_update=False
+            )
+            return self.async_show_form(step_id="step2")
+
+    with patch.dict(config_entries.HANDLERS, {"comp": TestFlow}), patch(
+        "homeassistant.config_entries.ConfigEntries.async_reload"
+    ) as async_reload:
+        result = await manager.flow.async_init(
+            "comp", context={"source": config_entries.SOURCE_USER}
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert entry.data["host"] == "1.1.1.1"
+    assert entry.data["additional"] == "data"
+    assert len(async_reload.mock_calls) == 0
 
 
 async def test_unignore_step_form(hass, manager):
