@@ -221,7 +221,11 @@ class OpenCVImageProcessor(ImageProcessingEntity):
     @property
     def state_attributes(self):
         """Return device specific state attributes."""
-        return {ATTR_MATCHES: self._matches, ATTR_TOTAL_MATCHES: self._total_matches, ATTR_MOTION: self._det}
+        return {
+            ATTR_MATCHES: self._matches,
+            ATTR_TOTAL_MATCHES: self._total_matches,
+            ATTR_MOTION: self._det,
+        }
 
     def process_image(self, image):
         """Process image."""
