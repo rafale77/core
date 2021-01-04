@@ -105,10 +105,6 @@ class ImageProcessingEntity(Entity):
 
     timeout = DEFAULT_TIMEOUT
 
-    def __init__(self):
-        """Initialize base face identify/verify entity."""
-        self.det = "on"
-
     def enable_detection(self):
         """Enable motion detection in the camera."""
         self.det = "on"
