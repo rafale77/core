@@ -1,5 +1,4 @@
 """Component that will process object detection with opencv."""
-import logging
 from pathlib import Path
 import sys
 
@@ -21,15 +20,16 @@ import homeassistant.helpers.config_validation as cv
 # pylint: disable=import-error
 
 
-_LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/model/"
 ATTR_MATCHES = "matches"
 ATTR_TOTAL_MATCHES = "total_matches"
+ATTR_MOTION = "detection"
 CONF_CLASSIFIER = "classifier"
 CONFIDENCE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.4
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-imgsize = int(640)
+imgsize = int(704)
+torch.set_num_threads(1)
 sys.path.insert(
     0,
     str(Path.home())
@@ -193,6 +193,15 @@ class OpenCVImageProcessor(ImageProcessingEntity):
         self._classifiers = classifiers.split(",")
         self._matches = []
         self._total_matches = 0
+        self._det = "on"
+
+    def enable_detection(self):
+        """Enable detection."""
+        self._det = "on"
+
+    def disable_detection(self):
+        """Disable detection."""
+        self._det = "off"
 
     @property
     def camera_entity(self):
@@ -212,26 +221,27 @@ class OpenCVImageProcessor(ImageProcessingEntity):
     @property
     def state_attributes(self):
         """Return device specific state attributes."""
-        return {ATTR_MATCHES: self._matches, ATTR_TOTAL_MATCHES: self._total_matches}
+        return {ATTR_MATCHES: self._matches, ATTR_TOTAL_MATCHES: self._total_matches, ATTR_MOTION: self._det}
 
     def process_image(self, image):
         """Process image."""
 
-        img = preprocessor(image, imgsize, device)
-        with torch.no_grad():
-            pred = non_max_suppression(
-                model(img)[0], CONFIDENCE_THRESHOLD, NMS_THRESHOLD
-            )
         self._matches = []
-        for i, det in enumerate(pred):  # detections per image
-            if det is not None and len(det) > 0:
-                for c in det[:, -1].unique():
-                    n = (det[:, -1] == c).sum()  # detections per class
-                    s = det[:, 4]
-                    if s[i] >= self._confidence:
-                        if class_names[int(c)] in self._classifiers:
-                            label = "{:g} {} : {:.2f}".format(
-                                n, class_names[int(c)], s[i] * 100
-                            )
-                            self._matches.append(label)
+        if self._det == "on":
+            img = preprocessor(image, imgsize, device)
+            with torch.no_grad():
+                pred = non_max_suppression(
+                    model(img)[0], CONFIDENCE_THRESHOLD, NMS_THRESHOLD
+                )
+            for i, det in enumerate(pred):  # detections per image
+                if det is not None and len(det) > 0:
+                    for c in det[:, -1].unique():
+                        n = (det[:, -1] == c).sum()  # detections per class
+                        s = det[:, 4]
+                        if s[i] >= self._confidence:
+                            if class_names[int(c)] in self._classifiers:
+                                label = "{:g} {} : {:.2f}".format(
+                                    n, class_names[int(c)], s[i] * 100
+                                )
+                                self._matches.append(label)
         self._total_matches = len(self._matches)
