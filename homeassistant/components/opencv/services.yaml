@@ -1,11 +1,11 @@
-enable_motion_recording:
+enable_detection:
   description: Enable recording a clip to camera storage when motion is detected.
   fields:
     entity_id:
       description: "Name(s) of the cameras, or 'all' for all cameras."
       example: "camera.house_front"
 
-disable_motion_recording:
+disable_detection:
   description: Disable recording a clip to camera storage when motion is detected.
   fields:
     entity_id:
