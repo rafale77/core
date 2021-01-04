@@ -83,24 +83,18 @@ async def async_setup(hass, config):
         if update_tasks:
             await asyncio.wait(update_tasks)
 
-    def enable_detection(service):
-        """Service handler for enabling."""
-        for entity in image_entities:
-            entity.enable_detection()
-
-    def disable_detection(service):
-        """Service handler for disabling."""
-        for entity in image_entities:
-            entity.disable_detection()
-
     hass.services.async_register(
         DOMAIN, SERVICE_SCAN, async_scan_service, schema=make_entity_service_schema({})
     )
     component.async_register_entity_service(
-        SERVICE_ENABLE, schema=make_entity_service_schema({}), func="async_enable_detection"
+        SERVICE_ENABLE,
+        schema=make_entity_service_schema({}),
+        func="async_enable_detection",
     )
     component.async_register_entity_service(
-        SERVICE_DISABLE, schema=make_entity_service_schema({}), func="async_disable_detection"
+        SERVICE_DISABLE,
+         schema=make_entity_service_schema({}),
+         func="async_disable_detection",
     )
 
     return True
@@ -243,7 +237,11 @@ class ImageProcessingFaceEntity(ImageProcessingEntity):
     @property
     def state_attributes(self):
         """Return device specific state attributes."""
-        return {ATTR_FACES: self.faces, ATTR_TOTAL_FACES: self.total_faces, ATTR_MOTION: self.det}
+        return {
+            ATTR_FACES: self.faces,
+            ATTR_TOTAL_FACES: self.total_faces,
+            ATTR_MOTION: self.det,
+        }
 
     def process_faces(self, faces, total):
         """Send event with detected faces and store data."""
