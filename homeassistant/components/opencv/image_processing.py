@@ -242,7 +242,10 @@ class OpenCVImageProcessor(ImageProcessingEntity):
                     for c in det[:, -1].unique():
                         n = (det[:, -1] == c).sum()  # detections per class
                         s = det[:, 4]
-                        if s[i] >= self._confidence and class_names[int(c)] in self._classifiers:
+                        if (
+                            s[i] >= self._confidence 
+                            and class_names[int(c)] in self._classifiers
+                        ):
                             label = "{:g} {} : {:.2f}".format(
                                 n, class_names[int(c)], s[i] * 100
                             )
