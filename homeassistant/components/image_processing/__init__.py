@@ -93,8 +93,8 @@ async def async_setup(hass, config):
     )
     component.async_register_entity_service(
         SERVICE_DISABLE,
-         schema=make_entity_service_schema({}),
-         func="async_disable_detection",
+        schema=make_entity_service_schema({}),
+        func="async_disable_detection",
     )
 
     return True
