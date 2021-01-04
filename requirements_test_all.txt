@@ -520,7 +520,7 @@ onvif-zeep-async==1.0.0
 # homeassistant.components.dlib_face_identify
 # homeassistant.components.ffmpeg
 # homeassistant.components.opencv
-opencv-python-headless==4.4.0.46
+# opencv-python-headless==4.4.0.46
 
 # homeassistant.components.openerz
 openerz-api==0.1.0
