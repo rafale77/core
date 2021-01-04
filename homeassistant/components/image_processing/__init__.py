@@ -28,6 +28,8 @@ DEVICE_CLASSES = [
 ]
 
 SERVICE_SCAN = "scan"
+SERVICE_ENABLE = "enable_detection"
+SERVICE_DISABLE = "disable_detection"
 
 EVENT_DETECT_FACE = "image_processing.detect_face"
 
@@ -81,8 +83,24 @@ async def async_setup(hass, config):
         if update_tasks:
             await asyncio.wait(update_tasks)
 
+    def enable_detection(service):
+        """Service handler for enabling."""
+        for entity in image_entities:
+            entity.enable_detection()
+
+    def disable_detection(service):
+        """Service handler for disabling."""
+        for entity in image_entities:
+            entity.disable_detection()
+
     hass.services.async_register(
         DOMAIN, SERVICE_SCAN, async_scan_service, schema=make_entity_service_schema({})
+    )
+    component.async_register_entity_service(
+        SERVICE_ENABLE, schema=make_entity_service_schema({}), func="async_enable_detection"
+    )
+    component.async_register_entity_service(
+        SERVICE_DISABLE, schema=make_entity_service_schema({}), func="async_disable_detection"
     )
 
     return True
@@ -93,6 +111,28 @@ class ImageProcessingEntity(Entity):
 
     timeout = DEFAULT_TIMEOUT
 
+    def __init__(self):
+        """Initialize base face identify/verify entity."""
+        self.det = "on"
+
+    def enable_detection(self):
+        """Enable motion detection in the camera."""
+        self.det = "on"
+        raise NotImplementedError()
+
+    async def async_enable_detection(self):
+        """Call the job and enable motion detection."""
+        await self.hass.async_add_executor_job(self.enable_detection)
+
+    def disable_detection(self):
+        """Disable motion detection in camera."""
+        self.det = "off"
+        raise NotImplementedError()
+
+    async def async_disable_detection(self):
+        """Call the job and disable motion detection."""
+        await self.hass.async_add_executor_job(self.disable_detection)
+
     @property
     def camera_entity(self):
         """Return camera entity id from process pictures."""
@@ -102,6 +142,11 @@ class ImageProcessingEntity(Entity):
     def confidence(self):
         """Return minimum confidence for do some things."""
         return None
+
+    @property
+    def state_attributes(self):
+        """Return device specific state attributes."""
+        return {ATTR_MOTION: self.det}
 
     def process_image(self, image):
         """Process image."""
@@ -145,6 +190,25 @@ class ImageProcessingFaceEntity(ImageProcessingEntity):
         """Initialize base face identify/verify entity."""
         self.faces = []
         self.total_faces = 0
+        self.det = "on"
+
+    def enable_detection(self):
+        """Enable motion detection in the camera."""
+        self.det = "on"
+        raise NotImplementedError()
+
+    async def async_enable_detection(self):
+        """Call the job and enable motion detection."""
+        await self.hass.async_add_executor_job(self.enable_detection)
+
+    def disable_detection(self):
+        """Disable motion detection in camera."""
+        self.det = "off"
+        raise NotImplementedError()
+
+    async def async_disable_detection(self):
+        """Call the job and disable motion detection."""
+        await self.hass.async_add_executor_job(self.disable_detection)
 
     @property
     def state(self):
@@ -179,7 +243,7 @@ class ImageProcessingFaceEntity(ImageProcessingEntity):
     @property
     def state_attributes(self):
         """Return device specific state attributes."""
-        return {ATTR_FACES: self.faces, ATTR_TOTAL_FACES: self.total_faces}
+        return {ATTR_FACES: self.faces, ATTR_TOTAL_FACES: self.total_faces, ATTR_MOTION: self.det}
 
     def process_faces(self, faces, total):
         """Send event with detected faces and store data."""
