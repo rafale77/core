@@ -25,9 +25,9 @@ from .model import Backbone
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
-
 ATTR_NAME = "name"
 ATTR_MOTION = "detection"
+
 
 def get_config():
     """Set configuration settings."""
@@ -161,7 +161,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
                 dist = torch.sum(torch.pow(diff, 2), dim=1)
                 minimum, min_idx = torch.min(dist, dim=1)
-                min_idx[minimum > self.conf.threshold] = -1  # if no match, set idx to -1
+                min_idx[minimum > self.conf.threshold] = -1  # if no match
                 for idx, _ in enumerate(unknowns):
                     found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
         self.process_faces(found, len(unknowns))
