@@ -50,7 +50,7 @@ class TestImageProcessing:
     def setup_method(self):
         """Set up things to be run when tests are started."""
         self.hass = get_test_home_assistant()
-
+        self.det = "on"
         setup_component(
             self.hass,
             http.DOMAIN,
