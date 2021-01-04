@@ -27,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
 
 ATTR_NAME = "name"
-
+ATTR_MOTION = "detection"
 
 def get_config():
     """Set configuration settings."""
@@ -87,6 +87,15 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         else:
             self._name = f"Dlib Face {split_entity_id(camera_entity)[1]}"
         self.train_faces()
+        self._det = "on"
+
+    def enable_detection(self):
+        """Enable detection."""
+        self._det = "on"
+
+    def disable_detection(self):
+        """Disable detection."""
+        self._det = "off"
 
     def faces_preprocessing(self, faces):
         """Forward."""
@@ -126,6 +135,11 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             _LOGGER.warning("Model training completed and saved...")
 
     @property
+    def state_attributes(self):
+        """Return device specific state attributes."""
+        return {ATTR_MOTION: self._det}
+
+    @property
     def camera_entity(self):
         """Return camera entity id from process pictures."""
         return self._camera
@@ -139,14 +153,15 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         """Process image."""
         unknowns = []
         found = []
-        faces, unknowns, scores, _ = self.face_detector.detect_align(image)
-        if len(scores) > 0:
-            with autocast():
-                embs = self.arcmodel(self.faces_preprocessing(faces))
-            diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
-            dist = torch.sum(torch.pow(diff, 2), dim=1)
-            minimum, min_idx = torch.min(dist, dim=1)
-            min_idx[minimum > self.conf.threshold] = -1  # if no match, set idx to -1
-            for idx, _ in enumerate(unknowns):
-                found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
+        if self._det == "on":
+            faces, unknowns, scores, _ = self.face_detector.detect_align(image)
+            if len(scores) > 0:
+                with autocast():
+                    embs = self.arcmodel(self.faces_preprocessing(faces))
+                diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
+                dist = torch.sum(torch.pow(diff, 2), dim=1)
+                minimum, min_idx = torch.min(dist, dim=1)
+                min_idx[minimum > self.conf.threshold] = -1  # if no match, set idx to -1
+                for idx, _ in enumerate(unknowns):
+                    found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
         self.process_faces(found, len(unknowns))
