@@ -23,7 +23,6 @@ from homeassistant.core import split_entity_id
 from .Retinaface import FaceDetector
 from .model import Backbone
 
-
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
 ATTR_NAME = "name"
