@@ -1,14 +1,13 @@
 """Component that will help set the Dlib face detect processing."""
+from itertools import product
 import logging
+from math import ceil
 import os
 
 # pylint: disable=import-error
 from pathlib import Path
-
 import cv2
 from easydict import EasyDict as edict
-from itertools import product
-from math import ceil
 import numpy as np
 import torch
 from torch.cuda.amp import autocast
@@ -124,7 +123,6 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
         # back to torch land
         output = torch.as_tensor(anchors, device=device).view(-1, 4)
-        _LOGGER.warning("priorbox {}".format(output))
         return output
 
     def preprocessor(self, img_raw):
@@ -202,7 +200,12 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             img, scale = self.preprocessor(image)
             if self.priors == []:
                 self.priors = self.prior_box(img.shape[2:], self.device)
-            faces, unknowns, scores, _ = self.face_detector.detect_align(image, img, scale, self.priors)
+            faces, unknowns, scores, _ = self.face_detector.detect_align(
+                image,
+                img,
+                scale,
+                self.priors,
+            )
             if len(scores) > 0:
                 with autocast():
                     embs = self.arcmodel(self.faces_preprocessing(faces))
