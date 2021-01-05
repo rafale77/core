@@ -3,11 +3,11 @@ from itertools import product
 import logging
 from math import ceil
 import os
+from pathlib import Path
 
 # pylint: disable=import-error
-from pathlib import Path
-import cv2
 
+import cv2
 from easydict import EasyDict as edict
 import numpy as np
 import torch
