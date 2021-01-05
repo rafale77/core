@@ -519,6 +519,9 @@ dynalite_devices==0.1.46
 # homeassistant.components.rainforest_eagle
 eagle200_reader==0.2.4
 
+# homeassistant.components.dlib_face_identify
+easydict==1.9
+
 # homeassistant.components.ebusd
 ebusdpy==0.0.16
 
