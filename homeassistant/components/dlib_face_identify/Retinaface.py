@@ -1,7 +1,5 @@
 from collections import OrderedDict
-from itertools import product
 import logging
-from math import ceil
 
 import cv2
 import numpy as np
@@ -18,18 +16,7 @@ from .model import RetinaFace
 _LOGGER = logging.getLogger(__name__)
 
 cfg = {
-    "min_sizes": [[16, 32], [64, 128], [256, 512]],
-    "steps": [8, 16, 32],
     "variance": [0.1, 0.2],
-    "clip": False,
-    "loc_weight": 2.0,
-    "gpu_train": True,
-    "batch_size": 1,
-    "ngpu": 4,
-    "epoch": 100,
-    "decay1": 70,
-    "decay2": 90,
-    "image_size": 840,
     "pretrain": True,
     "return_layers": {"layer2": 1, "layer3": 2, "layer4": 3},
     "in_channel": 256,
@@ -45,31 +32,6 @@ REFERENCE_FACIAL_POINTS = [
 ]
 
 DEFAULT_CROP_SIZE = (96, 112)
-
-
-def prior_box(cf, image_size=None, device="cpu"):
-    """Boxes for Face."""
-    steps = cf["steps"]
-    feature_maps = [
-        [ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps
-    ]
-    min_sizes_ = cf["min_sizes"]
-    anchors = []
-
-    for k, f in enumerate(feature_maps):
-        min_sizes = min_sizes_[k]
-        for i, j in product(range(f[0]), range(f[1])):
-            for min_size in min_sizes:
-                s_kx = min_size / image_size[1]
-                s_ky = min_size / image_size[0]
-                dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
-                dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
-                for cy, cx in product(dense_cy, dense_cx):
-                    anchors += [cx, cy, s_kx, s_ky]
-
-    # back to torch land
-    output = torch.as_tensor(anchors, device=device).view(-1, 4)
-    return output
 
 
 # Adapted from https://github.com/Hakuyume/chainer-ssd
@@ -184,16 +146,7 @@ class FaceDetector:
         self.out_size = face_size
         self.ref_pts = get_reference_facial_points(output_size=face_size)
 
-    def preprocessor(self, img_raw):
-        img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
-        scale = torch.as_tensor(
-            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
-        )
-        img -= torch.tensor([104, 117, 123]).to(self.device)
-        img = img.permute(2, 0, 1).unsqueeze(0)
-        return img, scale
-
-    def detect_faces(self, img_raw):
+    def detect_faces(self, img, scale, priors):
         """
         get a image from ndarray, detect faces in image
         Args:
@@ -210,13 +163,10 @@ class FaceDetector:
                 faces landmarks for each face
         """
 
-        img, scale = self.preprocessor(img_raw)
         # tic = time.time()
         with torch.no_grad():
             with autocast():
                 loc, conf, landmarks = self.model(img)  # forward pass
-
-        priors = prior_box(self.cfg, image_size=img.shape[2:], device=self.device)
         boxes = decode(loc.data.squeeze(0), priors, self.cfg["variance"])
         boxes = boxes * scale
         scores = conf.squeeze(0)[:, 1]
@@ -263,7 +213,7 @@ class FaceDetector:
 
         return boxes, scores, landmarks
 
-    def detect_align(self, img):
+    def detect_align(self, image, img, scale, priors):
         """
         get a image from ndarray, detect faces in image,
         cropped face and align face
@@ -281,7 +231,7 @@ class FaceDetector:
             landmarks:
                 face landmarks for each face
         """
-        boxes, scores, landmarks = self.detect_faces(img)
+        boxes, scores, landmarks = self.detect_faces(img, scale, priors)
 
         warped = []
         for src_pts in landmarks:
@@ -299,7 +249,7 @@ class FaceDetector:
                 )
 
             self.trans.estimate(src_pts.cpu().numpy(), self.ref_pts)
-            face_img = cv2.warpAffine(img, self.trans.params[0:2, :], self.out_size)
+            face_img = cv2.warpAffine(image, self.trans.params[0:2, :], self.out_size)
             warped.append(face_img)
 
         faces = torch.as_tensor(warped, dtype=torch.float32, device=self.device)
