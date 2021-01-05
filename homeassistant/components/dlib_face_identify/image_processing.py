@@ -126,6 +126,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         return output
 
     def preprocessor(self, img_raw):
+        """Convert cv2 image to tensor."""
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
         scale = torch.as_tensor(
             [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
@@ -201,10 +202,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             if self.priors == []:
                 self.priors = self.prior_box(img.shape[2:], self.device)
             faces, unknowns, scores, _ = self.face_detector.detect_align(
-                image,
-                img,
-                scale,
-                self.priors,
+                image, img, scale, self.priors
             )
             if len(scores) > 0:
                 with autocast():
