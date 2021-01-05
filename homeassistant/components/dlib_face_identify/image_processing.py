@@ -37,8 +37,6 @@ def get_config():
     conf.model_path = home + "/model/"
     conf.net_depth = 50
     conf.drop_ratio = 0.6
-    conf.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    conf.batch_size = 1  # irse net depth 50
     conf.facebank_path = Path(home + "recogface/")
     conf.threshold = 1
     return conf
@@ -100,7 +98,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         """Disable detection."""
         self._det = "off"
 
-    def prior_box(self, image_size, device):
+    def prior_box(self, image_size):
         """Boxes for Face."""
         steps = [8, 16, 32]
         feature_maps = [
@@ -121,7 +119,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                         anchors += [cx, cy, s_kx, s_ky]
 
         # back to torch land
-        output = torch.as_tensor(anchors, device=device).view(-1, 4)
+        output = torch.as_tensor(anchors, device=self.device).view(-1, 4)
         return output
 
     def preprocessor(self, img_raw):
@@ -199,7 +197,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         if self._det == "on":
             img, scale = self.preprocessor(image)
             if self.priors == []:
-                self.priors = self.prior_box(img.shape[2:], self.device)
+                self.priors = self.prior_box(img.shape[2:])
             faces, unknowns, scores, _ = self.face_detector.detect_align(
                 image, img, scale, self.priors
             )
