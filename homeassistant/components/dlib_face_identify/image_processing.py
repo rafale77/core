@@ -7,6 +7,8 @@ from pathlib import Path
 
 import cv2
 from easydict import EasyDict as edict
+from itertools import product
+from math import ceil
 import numpy as np
 import torch
 from torch.cuda.amp import autocast
@@ -89,6 +91,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         else:
             self._name = f"Dlib Face {split_entity_id(camera_entity)[1]}"
         self.train_faces()
+        self.priors = []
         self._det = "on"
 
     def enable_detection(self):
@@ -98,6 +101,40 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def disable_detection(self):
         """Disable detection."""
         self._det = "off"
+
+    def prior_box(self, image_size, device):
+        """Boxes for Face."""
+        steps = [8, 16, 32]
+        feature_maps = [
+            [ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps
+        ]
+        min_sizes_ = [[16, 32], [64, 128], [256, 512]]
+        anchors = []
+
+        for k, f in enumerate(feature_maps):
+            min_sizes = min_sizes_[k]
+            for i, j in product(range(f[0]), range(f[1])):
+                for min_size in min_sizes:
+                    s_kx = min_size / image_size[1]
+                    s_ky = min_size / image_size[0]
+                    dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
+                    dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
+                    for cy, cx in product(dense_cy, dense_cx):
+                        anchors += [cx, cy, s_kx, s_ky]
+
+        # back to torch land
+        output = torch.as_tensor(anchors, device=device).view(-1, 4)
+        _LOGGER.warning("priorbox {}".format(output))
+        return output
+
+    def preprocessor(self, img_raw):
+        img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
+        scale = torch.as_tensor(
+            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
+        )
+        img -= torch.tensor([104, 117, 123]).to(self.device)
+        img = img.permute(2, 0, 1).unsqueeze(0)
+        return img, scale
 
     def faces_preprocessing(self, faces):
         """Forward."""
@@ -122,7 +159,9 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 embs = []
                 for person_img in pix:
                     pic = cv2.imread(folder + person + "/" + person_img)
-                    face = self.face_detector.detect_align(pic)[0]
+                    img, scale = self.preprocessor(pic)
+                    priors = self.prior_box(img.shape[2:], self.device)
+                    face = self.face_detector.detect_align(img, scale, priors)[0]
                     if len(face) == 1:
                         with torch.no_grad():
                             embs.append(self.arcmodel(self.faces_preprocessing(face)))
@@ -160,7 +199,10 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         unknowns = []
         found = []
         if self._det == "on":
-            faces, unknowns, scores, _ = self.face_detector.detect_align(image)
+            img, scale = self.preprocessor(image)
+            if self.priors == []:
+                self.priors = self.prior_box(img.shape[2:], self.device)
+            faces, unknowns, scores, _ = self.face_detector.detect_align(image, img, scale, self.priors)
             if len(scores) > 0:
                 with autocast():
                     embs = self.arcmodel(self.faces_preprocessing(faces))
