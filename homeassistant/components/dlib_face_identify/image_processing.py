@@ -5,8 +5,6 @@ from math import ceil
 import os
 from pathlib import Path
 
-# pylint: disable=import-error
-
 import cv2
 from easydict import EasyDict as edict
 import numpy as np
@@ -24,6 +22,7 @@ from homeassistant.core import split_entity_id
 
 from .Retinaface import FaceDetector
 from .model import Backbone
+
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
