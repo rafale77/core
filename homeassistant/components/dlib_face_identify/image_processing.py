@@ -159,7 +159,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     pic = cv2.imread(folder + person + "/" + person_img)
                     img, scale = self.preprocessor(pic)
                     priors = self.prior_box(img.shape[2:], self.device)
-                    face = self.face_detector.detect_align(img, scale, priors)[0]
+                    face = self.face_detector.detect_align(pic, img, scale, priors)[0]
                     if len(face) == 1:
                         with torch.no_grad():
                             embs.append(self.arcmodel(self.faces_preprocessing(face)))
