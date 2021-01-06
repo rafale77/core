@@ -166,7 +166,7 @@ class FaceDetector:
                 loc, conf, landmarks = self.model(img)  # forward pass
         boxes = decode(loc.data.squeeze(0), priors, cfg["variance"])
         boxes = boxes * scale
-        scores = conf.squeeze(0)[:, 1]
+        scores = conf.squeeze(0)
         landmarks = decode_landmark(landmarks.squeeze(0), priors, cfg["variance"])
         scale1 = torch.as_tensor(
             [
