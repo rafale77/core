@@ -99,8 +99,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
         if classes:
             x = x[
                 (
-                    x[:, 5:6]
-                    == torch.as_tensor(classes, dtype=x.dtype, device=device)
+                    x[:, 5:6] == torch.as_tensor(classes, dtype=x.dtype, device=device)
                 ).any(1)
             ]
 
