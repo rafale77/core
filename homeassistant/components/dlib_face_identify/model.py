@@ -1,5 +1,4 @@
 from collections import namedtuple
-import logging
 
 import torch
 from torch.nn import (
@@ -22,7 +21,6 @@ import torch.nn.functional as F
 import torchvision.models as models
 from torchvision.models._utils import IntermediateLayerGetter
 
-_LOGGER = logging.getLogger(__name__)
 # flake8: noqa
 
 
@@ -233,7 +231,7 @@ class RetinaFace(Module):
         ldm_regressions = torch.cat(
             [self.LandmarkHead[i](feature) for i, feature in enumerate(features)], dim=1
         )
-        output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
+        output = (bbox_regressions, F.softmax(classifications, dim=-1).select(2, 1), ldm_regressions)
         return output
 
 
@@ -247,7 +245,7 @@ class Flatten(Module):
 
 def l2_norm(inpt, axis=1):
     norm = torch.norm(inpt, 2, axis, True)
-    output = torch.div(inpt, norm)
+    output = torch.floor_divide(inpt, norm)
     return output
 
 
