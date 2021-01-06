@@ -181,7 +181,7 @@ class FaceDetector:
                 img.shape[3],
                 img.shape[2],
             ],
-            device=(self.device),
+            device=self.device,
         )
         landmarks = landmarks * scale1
 
@@ -245,8 +245,8 @@ class FaceDetector:
                     "RetinaFace facial_pts and reference_pts must have the same shape"
                 )
 
-            tfm = cv2.estimateAffinePartial2D(src_pts.cpu().numpy(), self.ref_pts)
-            face_img = cv2.warpAffine(image, tfm[0], self.out_size)
+            tfm, _ = cv2.estimateAffinePartial2D(src_pts.cpu().numpy(), self.ref_pts)
+            face_img = cv2.warpAffine(image, tfm, self.out_size)
             warped.append(face_img)
 
         faces = torch.as_tensor(warped, dtype=torch.float32, device=self.device)
