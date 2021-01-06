@@ -1,6 +1,6 @@
 # This file contains experimental modules
 import numpy as np
-import torch
+from torch import arange, cat, linspace, sigmoid
 from torch.nn import (
     BatchNorm2d,
     Conv2d,
@@ -51,7 +51,7 @@ class C3(Module):
     def forward(self, x):
         y1 = self.cv3(self.m(self.cv1(x)))
         y2 = self.cv2(x)
-        return self.cv4(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+        return self.cv4(self.act(self.bn(cat((y1, y2), dim=1))))
 
 
 class Sum(Module):
@@ -62,13 +62,13 @@ class Sum(Module):
         self.iter = range(n - 1)  # iter object
         if weight:
             self.w = Parameter(
-                -torch.arange(1.0, n) / 2, requires_grad=True
+                -arange(1.0, n) / 2, requires_grad=True
             )  # layer weights
 
     def forward(self, x):
         y = x[0]  # no weight
         if self.weight:
-            w = torch.sigmoid(self.w) * 2
+            w = sigmoid(self.w) * 2
             for i in self.iter:
                 y = y + x[i + 1] * w[i]
         else:
@@ -84,12 +84,12 @@ class GhostConv(Module):
     ):  # ch_in, ch_out, kernel, stride, groups
         super().__init__()
         c_ = c2 // 2  # hidden channels
-        self.cv1 = Conv(c1, c_, k, s, g, act)
-        self.cv2 = Conv(c_, c_, 5, 1, c_, act)
+        self.cv1 = Conv(c1, c_, k, s, None, g, act)
+        self.cv2 = Conv(c_, c_, 5, 1, None, c_, act)
 
     def forward(self, x):
         y = self.cv1(x)
-        return torch.cat([y, self.cv2(y)], 1)
+        return cat([y, self.cv2(y)], 1)
 
 
 class GhostBottleneck(Module):
@@ -118,7 +118,7 @@ class MixConv2d(Module):
         super().__init__()
         groups = len(k)
         if equal_ch:  # equal c_ per group
-            i = torch.linspace(0, groups - 1e-6, c2).floor()  # c2 indices
+            i = linspace(0, groups - 1e-6, c2).floor()  # c2 indices
             c_ = [(i == g).sum() for g in range(groups)]  # intermediate channels
         else:  # equal weight.numel() per group
             b = [c2] + [0] * groups
@@ -140,4 +140,4 @@ class MixConv2d(Module):
         self.act = LeakyReLU(0.1, inplace=True)
 
     def forward(self, x):
-        return x + self.act(self.bn(torch.cat([m(x) for m in self.m], 1)))
+        return x + self.act(self.bn(cat([m(x) for m in self.m], 1)))
