@@ -1989,9 +1989,6 @@ satel_integra==0.3.4
 # homeassistant.components.deutsche_bahn
 schiene==0.23
 
-# homeassistant.components.dlib_face_identify
-scikit-image==0.18.1
-
 # homeassistant.components.scsgate
 scsgate==0.1.0
 
