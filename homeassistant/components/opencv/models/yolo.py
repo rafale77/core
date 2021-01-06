@@ -37,7 +37,7 @@ from .experimental import C3, CrossConv, MixConv2d
 
 _LOGGER = logging.getLogger(__name__)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+dtype = torch.float16
 # flake8: noqa
 
 
@@ -92,6 +92,7 @@ def fuse_conv_and_bn(conv, bn):
             kernel_size=conv.kernel_size,
             stride=conv.stride,
             padding=conv.padding,
+            groups=conv.groups,
             bias=True,
         ).to(device)
 
@@ -102,7 +103,7 @@ def fuse_conv_and_bn(conv, bn):
 
         # prepare spatial bias
         b_conv = (
-            torch.zeros(conv.weight.size(0), dtype=torch.float16, device=device)
+            torch.zeros(conv.weight.size(0), dtype=dtype, device=device)
             if conv.bias is None
             else conv.bias
         )
@@ -157,8 +158,8 @@ class Detect(Module):
         self.no = nc + 5  # number of outputs per anchor
         self.nl = len(anchors)  # number of detection layers
         self.na = len(anchors[0]) // 2  # number of anchors
-        self.grid = [torch.zeros(1)] * self.nl  # init grid
-        a = torch.as_tensor(anchors, device=device).float().view(self.nl, -1, 2)
+        self.grid = [torch.zeros(1,device=device)] * self.nl  # init grid
+        a = torch.as_tensor(anchors, dtype=dtype, device=device).view(self.nl, -1, 2)
         self.register_buffer("anchors", a)  # shape(nl,na,2)
         self.register_buffer(
             "anchor_grid", a.clone().view(self.nl, 1, -1, 1, 1, 2)
@@ -177,11 +178,11 @@ class Detect(Module):
                 .contiguous()
             )
             if self.grid[i].shape[2:4] != x[i].shape[2:4]:
-                self.grid[i] = self._make_grid(nx, ny).to(x[i].device)
+                self.grid[i] = self._make_grid(nx, ny)
 
             y = x[i].sigmoid()
             y[..., 0:2] = (
-                y[..., 0:2] * 2.0 - 0.5 + self.grid[i].to(x[i].device)
+                y[..., 0:2] * 2.0 - 0.5 + self.grid[i]
             ) * self.stride[
                 i
             ]  # xy
@@ -193,7 +194,7 @@ class Detect(Module):
     @staticmethod
     def _make_grid(nx=20, ny=20):
         yv, xv = torch.meshgrid([torch.arange(ny), torch.arange(nx)])
-        return torch.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).float()
+        return torch.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).to(device)
 
 
 class Model(Module):
@@ -236,25 +237,7 @@ class Model(Module):
         initialize_weights(self)
         self.info()
 
-    def forward(self, x, augment=False):
-        if augment:
-            img_size = x.shape[-2:]  # height, width
-            s = [1, 0.83, 0.67]  # scales
-            f = [None, 3, None]  # flips (2-ud, 3-lr)
-            y = []  # outputs
-            for si, fi in zip(s, f):
-                xi = scale_img(x.flip(fi) if fi else x, si)
-                yi = self.forward_once(xi)[0]  # forward
-                yi[..., :4] /= si  # de-scale
-                if fi == 2:
-                    yi[..., 1] = img_size[0] - yi[..., 1]  # de-flip ud
-                elif fi == 3:
-                    yi[..., 0] = img_size[1] - yi[..., 0]  # de-flip lr
-                y.append(yi)
-            return torch.cat(y, 1), None  # augmented inference, train
-        return self.forward_once(x)  # single-scale inference, train
-
-    def forward_once(self, x):
+    def forward(self, x):
         y = []  # outputs
         for m in self.model:
             if m.f != -1:  # if not from previous layer
