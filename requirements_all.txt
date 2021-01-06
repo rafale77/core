@@ -764,7 +764,7 @@ hole==0.5.1
 holidays==0.10.4
 
 # homeassistant.components.frontend
-home-assistant-frontend==20201229.0
+home-assistant-frontend==20201229.1
 
 # homeassistant.components.zwave
 homeassistant-pyozw==0.1.10
@@ -1063,7 +1063,7 @@ openhomedevice==0.7.2
 opensensemap-api==0.1.5
 
 # homeassistant.components.enigma2
-openwebifpy==3.1.6
+openwebifpy==3.2.7
 
 # homeassistant.components.luci
 openwrt-luci-rpc==1.1.6
@@ -1743,7 +1743,7 @@ python-clementine-remote==1.0.1
 python-digitalocean==1.13.2
 
 # homeassistant.components.ecobee
-python-ecobee-api==0.2.7
+python-ecobee-api==0.2.8
 
 # homeassistant.components.eq3btsmart
 # python-eq3bt==0.1.11
@@ -2349,7 +2349,7 @@ zeep[async]==4.0.0
 zengge==0.2
 
 # homeassistant.components.zeroconf
-zeroconf==0.28.7
+zeroconf==0.28.8
 
 # homeassistant.components.zha
 zha-quirks==0.0.51

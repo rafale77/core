@@ -23,6 +23,7 @@ from homeassistant.util import dt as dt_util
 
 from .common import wait_recording_done
 
+from tests.async_mock import patch
 from tests.common import fire_time_changed, get_test_home_assistant
 
 

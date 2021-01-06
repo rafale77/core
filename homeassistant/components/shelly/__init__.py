@@ -24,7 +24,6 @@ from homeassistant.helpers import (
 )
 
 from .const import (
-    AIOSHELLY_DEVICE_TIMEOUT_SEC,
     BATTERY_DEVICES_WITH_PERMANENT_CONNECTION,
     COAP,
     DATA_CONFIG_ENTRY,
