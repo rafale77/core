@@ -181,9 +181,7 @@ class Detect(Module):
                 self.grid[i] = self._make_grid(nx, ny)
 
             y = x[i].sigmoid()
-            y[..., 0:2] = (
-                y[..., 0:2] * 2.0 - 0.5 + self.grid[i]
-            ) * self.stride[
+            y[..., 0:2] = (y[..., 0:2] * 2.0 - 0.5 + self.grid[i]) * self.stride[
                 i
             ]  # xy
             y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
