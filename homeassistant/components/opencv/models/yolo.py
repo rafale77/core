@@ -158,7 +158,7 @@ class Detect(Module):
         self.no = nc + 5  # number of outputs per anchor
         self.nl = len(anchors)  # number of detection layers
         self.na = len(anchors[0]) // 2  # number of anchors
-        self.grid = [torch.zeros(1,device=device)] * self.nl  # init grid
+        self.grid = [torch.zeros(1, device=device)] * self.nl  # init grid
         a = torch.as_tensor(anchors, dtype=dtype, device=device).view(self.nl, -1, 2)
         self.register_buffer("anchors", a)  # shape(nl,na,2)
         self.register_buffer(
