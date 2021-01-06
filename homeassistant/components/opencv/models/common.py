@@ -3,7 +3,7 @@ from collections import OrderedDict, defaultdict
 import math
 
 from mish_cuda import MishCuda as Mish
-import torch
+from torch import cat
 from torch.nn import (
     AdaptiveAvgPool2d,
     BatchNorm2d,
@@ -154,7 +154,7 @@ class BottleneckCSP(Module):
     def forward(self, x):
         y1 = self.cv3(self.m(self.cv1(x)))
         y2 = self.cv2(x)
-        return self.cv4(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+        return self.cv4(self.act(self.bn(cat((y1, y2), dim=1))))
 
 
 class BottleneckCSP2(Module):
@@ -175,7 +175,7 @@ class BottleneckCSP2(Module):
         x1 = self.cv1(x)
         y1 = self.m(x1)
         y2 = self.cv2(x1)
-        return self.cv3(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+        return self.cv3(self.act(self.bn(cat((y1, y2), dim=1))))
 
 
 class VoVCSP(Module):
@@ -193,7 +193,7 @@ class VoVCSP(Module):
         _, x1 = x.chunk(2, dim=1)
         x1 = self.cv1(x1)
         x2 = self.cv2(x1)
-        return self.cv3(torch.cat((x1, x2), dim=1))
+        return self.cv3(cat((x1, x2), dim=1))
 
 
 class SPP(Module):
@@ -209,7 +209,7 @@ class SPP(Module):
 
     def forward(self, x):
         x = self.cv1(x)
-        return self.cv2(torch.cat([x] + [m(x) for m in self.m], 1))
+        return self.cv2(cat([x] + [m(x) for m in self.m], 1))
 
 
 class SPPCSP(Module):
@@ -232,9 +232,9 @@ class SPPCSP(Module):
 
     def forward(self, x):
         x1 = self.cv4(self.cv3(self.cv1(x)))
-        y1 = self.cv6(self.cv5(torch.cat([x1] + [m(x1) for m in self.m], 1)))
+        y1 = self.cv6(self.cv5(cat([x1] + [m(x1) for m in self.m], 1)))
         y2 = self.cv2(x)
-        return self.cv7(self.act(self.bn(torch.cat((y1, y2), dim=1))))
+        return self.cv7(self.act(self.bn(cat((y1, y2), dim=1))))
 
 
 class MP(Module):
@@ -257,7 +257,7 @@ class Focus(Module):
 
     def forward(self, x):  # x(b,c,w,h) -> y(b,4c,w/2,h/2)
         return self.conv(
-            torch.cat(
+            cat(
                 [
                     x[..., ::2, ::2],
                     x[..., 1::2, ::2],
@@ -276,7 +276,7 @@ class Concat(Module):
         self.d = dimension
 
     def forward(self, x):
-        return torch.cat(x, self.d)
+        return cat(x, self.d)
 
 
 class Flatten(Module):
@@ -299,7 +299,7 @@ class Classify(Module):
         self.flat = Flatten()
 
     def forward(self, x):
-        z = torch.cat(
+        z = cat(
             [self.aap(y) for y in (x if isinstance(x, list) else [x])], 1
         )  # cat if list
         return self.flat(self.conv(z))  # flatten to x(b,c2)
@@ -364,7 +364,7 @@ class HarDBlock(Module):
             for i in link:
                 tin.append(layers_[i])
             if len(tin) > 1:
-                x = torch.cat(tin, 1)
+                x = cat(tin, 1)
             else:
                 x = tin[0]
             out = self.layers[layer](x)
@@ -375,7 +375,7 @@ class HarDBlock(Module):
         for i in range(t):
             if (i == 0 and self.keepBase) or (i == t - 1) or (i % 2 == 1):
                 out_.append(layers_[i])
-        out = torch.cat(out_, 1)
+        out = cat(out_, 1)
         return out
 
 
@@ -518,5 +518,5 @@ class HarDBlock2(Module):
             if i % 2 == 0 or i == len(self.conv_layers) - 1:
                 outs_.append(xin)
 
-        out = torch.cat(outs_, 1)
+        out = cat(outs_, 1)
         return out
