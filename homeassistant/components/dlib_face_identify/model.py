@@ -231,7 +231,11 @@ class RetinaFace(Module):
         ldm_regressions = torch.cat(
             [self.LandmarkHead[i](feature) for i, feature in enumerate(features)], dim=1
         )
-        output = (bbox_regressions, F.softmax(classifications, dim=-1).select(2, 1), ldm_regressions)
+        output = (
+            bbox_regressions,
+            F.softmax(classifications, dim=-1).select(2, 1),
+            ldm_regressions,
+        )
         return output
 
 
