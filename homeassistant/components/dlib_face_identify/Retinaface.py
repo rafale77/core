@@ -3,7 +3,6 @@ import logging
 
 import cv2
 import numpy as np
-from skimage import transform
 import torch
 from torch.cuda.amp import autocast
 
@@ -135,14 +134,12 @@ class FaceDetector:
         self.model.load_state_dict(new_state_dict)
         self.model.eval()
         # torch.quantization.fuse_modules(self.model, [['conv', 'bn']], inplace=True)
-        self.cfg = cfg
         # setting for face detection
         self.thresh = confidence_threshold
         self.top_k = top_k
         self.nms_thresh = nms_threshold
         self.keep_top_k = keep_top_k
         # setting for face align
-        self.trans = transform.SimilarityTransform()
         self.out_size = face_size
         self.ref_pts = get_reference_facial_points(output_size=face_size)
 
@@ -167,10 +164,10 @@ class FaceDetector:
         with torch.no_grad():
             with autocast():
                 loc, conf, landmarks = self.model(img)  # forward pass
-        boxes = decode(loc.data.squeeze(0), priors, self.cfg["variance"])
+        boxes = decode(loc.data.squeeze(0), priors, cfg["variance"])
         boxes = boxes * scale
         scores = conf.squeeze(0)[:, 1]
-        landmarks = decode_landmark(landmarks.squeeze(0), priors, self.cfg["variance"])
+        landmarks = decode_landmark(landmarks.squeeze(0), priors, cfg["variance"])
         scale1 = torch.as_tensor(
             [
                 img.shape[3],
@@ -248,8 +245,8 @@ class FaceDetector:
                     "RetinaFace facial_pts and reference_pts must have the same shape"
                 )
 
-            self.trans.estimate(src_pts.cpu().numpy(), self.ref_pts)
-            face_img = cv2.warpAffine(image, self.trans.params[0:2, :], self.out_size)
+            tfm = cv2.estimateAffinePartial2D(src_pts.cpu().numpy(), self.ref_pts)
+            face_img = cv2.warpAffine(image, tfm[0], self.out_size)
             warped.append(face_img)
 
         faces = torch.as_tensor(warped, dtype=torch.float32, device=self.device)
