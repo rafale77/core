@@ -1,7 +1,6 @@
 """The tests for the Recorder component."""
 # pylint: disable=protected-access
 from datetime import datetime, timedelta
-from unittest.mock import patch
 
 from sqlalchemy.exc import OperationalError
 
