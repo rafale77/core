@@ -19,7 +19,6 @@ from torch.nn import (
 )
 import torch.nn.functional as F
 import torchvision.models as models
-from torchvision.models._utils import IntermediateLayerGetter
 
 # flake8: noqa
 
@@ -31,13 +30,11 @@ def conv_bn(inp, oup, stride=1, leaky=0):
         LeakyReLU(negative_slope=leaky, inplace=True),
     )
 
-
 def conv_bn_no_relu(inp, oup, stride):
     return Sequential(
         Conv2d(inp, oup, 3, stride, 1, bias=False),
         BatchNorm2d(oup),
     )
-
 
 def conv_bn1X1(inp, oup, stride, leaky=0):
     return Sequential(
@@ -165,31 +162,29 @@ class LandmarkHead(Module):
 
 
 class RetinaFace(Module):
-    def __init__(self, cfg=None):
-        """
-        :param cfg:  Network related settings.
-        """
+    def __init__(self):
+        """Define Retina Module."""
         super().__init__()
 
-        backbone = models.resnet50(pretrained=cfg["pretrain"])
+        return_layers = {'layer2': 1, 'layer3': 2, 'layer4': 3}
+        in_channel = 256
+        out_channel = 256
 
-        self.body = IntermediateLayerGetter(backbone, cfg["return_layers"])
-        in_channels_stage2 = cfg["in_channel"]
+        self.body = models._utils.IntermediateLayerGetter(models.resnet50(pretrained=True), return_layers)
+        in_channels_stage2 = in_channel
         in_channels_list = [
             in_channels_stage2 * 2,
             in_channels_stage2 * 4,
             in_channels_stage2 * 8,
         ]
-        out_channels = cfg["out_channel"]
-        self.fpn = FPN(in_channels_list, out_channels)
-        self.ssh1 = SSH(out_channels, out_channels)
-        self.ssh2 = SSH(out_channels, out_channels)
-        self.ssh3 = SSH(out_channels, out_channels)
-
-        self.ClassHead = self._make_class_head(fpn_num=3, inchannels=cfg["out_channel"])
-        self.BboxHead = self._make_bbox_head(fpn_num=3, inchannels=cfg["out_channel"])
+        self.fpn = FPN(in_channels_list, out_channel)
+        self.ssh1 = SSH(out_channel, out_channel)
+        self.ssh2 = SSH(out_channel, out_channel)
+        self.ssh3 = SSH(out_channel, out_channel)
+        self.ClassHead = self._make_class_head(fpn_num=3, inchannels=out_channel)
+        self.BboxHead = self._make_bbox_head(fpn_num=3, inchannels=out_channel)
         self.LandmarkHead = self._make_landmark_head(
-            fpn_num=3, inchannels=cfg["out_channel"]
+            fpn_num=3, inchannels=out_channel
         )
 
     def _make_class_head(self, fpn_num=3, inchannels=64, anchor_num=2):
@@ -238,19 +233,12 @@ class RetinaFace(Module):
         )
         return output
 
-
 #  Original Arcface Model ######################################
 
 
 class Flatten(Module):
     def forward(self, inpt):
         return inpt.view(inpt.size(0), -1)
-
-
-def l2_norm(inpt, axis=1):
-    norm = torch.norm(inpt, 2, axis, True)
-    output = torch.floor_divide(inpt, norm)
-    return output
 
 
 class SEModule(Module):
@@ -312,34 +300,20 @@ def get_block(in_channel, depth, num_units, stride=2):
 
 
 def get_blocks(num_layers):
-    if num_layers == 50:
-        blocks = [
-            get_block(in_channel=64, depth=64, num_units=3),
-            get_block(in_channel=64, depth=128, num_units=4),
-            get_block(in_channel=128, depth=256, num_units=14),
-            get_block(in_channel=256, depth=512, num_units=3),
-        ]
-    elif num_layers == 100:
-        blocks = [
-            get_block(in_channel=64, depth=64, num_units=3),
-            get_block(in_channel=64, depth=128, num_units=13),
-            get_block(in_channel=128, depth=256, num_units=30),
-            get_block(in_channel=256, depth=512, num_units=3),
-        ]
-    elif num_layers == 152:
-        blocks = [
-            get_block(in_channel=64, depth=64, num_units=3),
-            get_block(in_channel=64, depth=128, num_units=8),
-            get_block(in_channel=128, depth=256, num_units=36),
-            get_block(in_channel=256, depth=512, num_units=3),
-        ]
+    blocks = [
+        get_block(in_channel=64, depth=64, num_units=3),
+        get_block(in_channel=64, depth=128, num_units=4),
+        get_block(in_channel=128, depth=256, num_units=14),
+        get_block(in_channel=256, depth=512, num_units=3),
+    ]
     return blocks
 
 
-class Backbone(Module):
-    def __init__(self, num_layers, drop_ratio):
+class Arcface(Module):
+    def __init__(self):
         super().__init__()
-        assert num_layers in [50, 100, 152], "num_layers should be 50,100, or 152"
+        drop_ratio = 0.6
+        num_layers = 50
         blocks = get_blocks(num_layers)
         self.input_layer = Sequential(
             Conv2d(3, 64, (3, 3), 1, 1, bias=False), BatchNorm2d(64), PReLU(64)
@@ -365,4 +339,5 @@ class Backbone(Module):
         x = self.input_layer(x)
         x = self.body(x)
         x = self.output_layer(x)
-        return l2_norm(x)
+        norm = torch.norm(x, 2, 1, True)
+        return torch.floor_divide(x, norm)
