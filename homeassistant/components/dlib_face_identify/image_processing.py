@@ -6,10 +6,8 @@ import os
 from pathlib import Path
 
 import cv2
-from easydict import EasyDict as edict
 import numpy as np
 import torch
-from torch.cuda.amp import autocast
 from torchvision import transforms as trans
 
 from homeassistant.components.image_processing import (
@@ -21,7 +19,7 @@ from homeassistant.components.image_processing import (
 from homeassistant.core import split_entity_id
 
 from .Retinaface import FaceDetector
-from .model import Backbone
+from .model import Arcface
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
@@ -29,17 +27,6 @@ ATTR_NAME = "name"
 ATTR_FACES = "faces"
 ATTR_TOTAL_FACES = "total_faces"
 ATTR_MOTION = "detection"
-
-
-def get_config():
-    """Set configuration settings."""
-    conf = edict()
-    conf.model_path = home + "/model/"
-    conf.net_depth = 50
-    conf.drop_ratio = 0.6
-    conf.facebank_path = Path(home + "recogface/")
-    conf.threshold = 1
-    return conf
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -63,25 +50,16 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         """Initialize Dlib face identify entry."""
 
         super().__init__()
+        self.facebank_path = Path(home + "recogface/")
+        self.threshold = 1
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.face_detector = FaceDetector(
-            weight_path=home + "model/Resnet50_Final.pth", device=self.device
+        self.face_detector = FaceDetector()
+        self.arcmodel = Arcface().to(self.device)
+        self.arcmodel.load_state_dict(
+            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
         )
-        self._camera = camera_entity
-        self.conf = get_config()
-        self.arcmodel = Backbone(self.conf.net_depth, self.conf.drop_ratio).to(
-            self.device
-        )
-        try:
-            self.arcmodel.load_state_dict(
-                torch.load(
-                    f"{self.conf.model_path}/model_ir_se50.pth",
-                    map_location=self.device,
-                )
-            )
-        except OSError:
-            _LOGGER.warning("Arcface weight does not exist")
         self.arcmodel.eval()
+        self._camera = camera_entity
         if name:
             self._name = name
         else:
@@ -123,12 +101,12 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         return output
 
     def preprocessor(self, img_raw):
-        """Convert cv2 image to tensor."""
+        """Convert cv2/PIL image to tensor."""
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
         scale = torch.as_tensor(
             [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
         )
-        img -= torch.tensor([104, 117, 123]).to(self.device)
+        img -= torch.tensor([104, 117, 123]).to(self.device) #BGR
         img = img.permute(2, 0, 1).unsqueeze(0)
         return img, scale
 
@@ -141,8 +119,8 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def train_faces(self):
         """Train and load faces."""
         try:
-            self.targets = torch.load(self.conf.facebank_path / "facebank.pth")
-            self.names = np.load(self.conf.facebank_path / "names.npy")
+            self.targets = torch.load(self.facebank_path / "facebank.pth")
+            self.names = np.load(self.facebank_path / "names.npy")
             _LOGGER.warning("Faces Loaded")
         except Exception:
             _LOGGER.warning("Model not trained, retraining...")
@@ -166,9 +144,9 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 faces.append(torch.cat(embs).mean(0, keepdim=True))
                 names.append(person)
             self.targets = torch.cat(faces)
-            torch.save(self.targets, str(self.conf.facebank_path) + "/facebank.pth")
+            torch.save(self.targets, str(self.facebank_path) + "/facebank.pth")
             self.names = np.array(names)
-            np.save(str(self.conf.facebank_path) + "/names", self.names)
+            np.save(str(self.facebank_path) + "/names", self.names)
             _LOGGER.warning("Model training completed and saved...")
 
     @property
@@ -202,12 +180,12 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 image, img, scale, self.priors
             )
             if len(scores) > 0:
-                with autocast():
+                with torch.cuda.amp.autocast():
                     embs = self.arcmodel(self.faces_preprocessing(faces))
                 diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
                 dist = torch.sum(torch.pow(diff, 2), dim=1)
                 minimum, min_idx = torch.min(dist, dim=1)
-                min_idx[minimum > self.conf.threshold] = -1  # if no match
+                min_idx[minimum > self.threshold] = -1  # if no match
                 for idx, _ in enumerate(unknowns):
                     found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
         self.process_faces(found, len(unknowns))
