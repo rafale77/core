@@ -103,12 +103,9 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def preprocessor(self, img_raw):
         """Convert cv2/PIL image to tensor."""
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
-        scale = torch.as_tensor(
-            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
-        )
         img -= torch.tensor([104, 117, 123]).to(self.device)  # BGR
         img = img.permute(2, 0, 1).unsqueeze(0)
-        return img, scale
+        return img
 
     def faces_preprocessing(self, faces):
         """Forward."""
@@ -135,7 +132,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     pic = cv2.imread(folder + person + "/" + person_img)
                     img, scale = self.preprocessor(pic)
                     priors = self.prior_box(img.shape[2:])
-                    face = self.face_detector.detect_align(pic, img, scale, priors)[0]
+                    face = self.face_detector.detect_align(pic, img, priors)[0]
                     if len(face) == 1:
                         with torch.no_grad():
                             embs.append(self.arcmodel(self.faces_preprocessing(face)))
@@ -177,7 +174,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             if self.priors == []:
                 self.priors = self.prior_box(img.shape[2:])
             faces, unknowns, scores, _ = self.face_detector.detect_align(
-                image, img, scale, self.priors
+                image, img, self.priors
             )
             if len(scores) > 0:
                 with torch.cuda.amp.autocast():

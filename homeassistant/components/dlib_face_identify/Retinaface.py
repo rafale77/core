@@ -106,7 +106,7 @@ class FaceDetector:
         )
         return landms
 
-    def detect_faces(self, img, scale, priors):
+    def detect_faces(self, img, priors):
         """
         get a image from ndarray, detect faces in image
         Args:
@@ -128,6 +128,9 @@ class FaceDetector:
             with autocast():
                 loc, conf, landmarks = self.model(img)  # forward pass
         boxes = self.decode(loc.data.squeeze(0), priors, variance)
+        scale = torch.as_tensor(
+            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
+        )
         boxes = boxes * scale
         scores = conf.squeeze(0)
         landmarks = self.decode_landmark(landmarks.squeeze(0), priors, variance)
@@ -173,16 +176,13 @@ class FaceDetector:
 
         return boxes, scores, landmarks
 
-    def detect_align(self, image, img, scale, priors):
+    def detect_align(self, image, img, priors):
         """
         get a image from ndarray, detect faces in image,
         cropped face and align face
         Args:
-            img: original image from cv2(BGR) or PIL(RGB)
-        Notes:
-            coordinate is corresponding to original image
-            and type of return image is corresponding to input(cv2, PIL)
-
+            image: original image from cv2(BGR) or PIL(RGB)
+            img: tensorized image
         Returns:
             faces:
                 a tensor(n, 112, 112, 3) of faces that aligned
@@ -191,10 +191,8 @@ class FaceDetector:
             landmarks:
                 face landmarks for each face
         """
-        boxes, scores, landmarks = self.detect_faces(img, scale, priors)
-
+        boxes, scores, landmarks = self.detect_faces(img, priors)
         warped = []
-
         for src_pts in landmarks:
             if max(src_pts.shape) < 3 or min(src_pts.shape) != 2:
                 raise _LOGGER.warning(
