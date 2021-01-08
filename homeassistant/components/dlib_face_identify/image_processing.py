@@ -130,7 +130,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 embs = []
                 for person_img in pix:
                     pic = cv2.imread(folder + person + "/" + person_img)
-                    img, scale = self.preprocessor(pic)
+                    img = self.preprocessor(pic)
                     priors = self.prior_box(img.shape[2:])
                     face = self.face_detector.detect_align(pic, img, priors)[0]
                     if len(face) == 1:
@@ -170,7 +170,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         unknowns = []
         found = []
         if self._det == "on":
-            img, scale = self.preprocessor(image)
+            img = self.preprocessor(image)
             if self.priors == []:
                 self.priors = self.prior_box(img.shape[2:])
             faces, unknowns, scores, _ = self.face_detector.detect_align(
