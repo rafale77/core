@@ -128,28 +128,13 @@ class FaceDetector:
             with autocast():
                 loc, conf, landmarks = self.model(img)  # forward pass
         boxes = self.decode(loc.data.squeeze(0), priors, variance)
-        scale = torch.as_tensor(
-            [img.shape[1], img.shape[0], img.shape[1], img.shape[0]], device=self.device
-        )
-        boxes = boxes * scale
+        h, w = img.shape[2], img.shape[3]
+        boxes = boxes * torch.as_tensor([w, h, w, h], device=self.device)
         scores = conf.squeeze(0)
         landmarks = self.decode_landmark(landmarks.squeeze(0), priors, variance)
-        scale1 = torch.as_tensor(
-            [
-                img.shape[3],
-                img.shape[2],
-                img.shape[3],
-                img.shape[2],
-                img.shape[3],
-                img.shape[2],
-                img.shape[3],
-                img.shape[2],
-                img.shape[3],
-                img.shape[2],
-            ],
-            device=self.device,
+        landmarks = landmarks * torch.as_tensor(
+            [w, h, w, h, w, h, w, h, w, h], device=self.device
         )
-        landmarks = landmarks * scale1
 
         # ignore low scores
         index = torch.where(scores > self.thresh)[0]
