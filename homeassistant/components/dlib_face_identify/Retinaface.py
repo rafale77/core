@@ -48,7 +48,9 @@ class FaceDetector:
         self.ref_pts = get_reference_facial_points()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.model = RetinaFace().to(self.device)
-        state_dict = torch.load(home + "model/Resnet50_Final.pth", map_location=self.device)
+        state_dict = torch.load(
+            home + "model/Resnet50_Final.pth", map_location=self.device
+        )
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
             name = k[7:]  # remove `module.
@@ -192,6 +194,7 @@ class FaceDetector:
         boxes, scores, landmarks = self.detect_faces(img, scale, priors)
 
         warped = []
+
         for src_pts in landmarks:
             if max(src_pts.shape) < 3 or min(src_pts.shape) != 2:
                 raise _LOGGER.warning(

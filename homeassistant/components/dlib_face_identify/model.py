@@ -168,7 +168,7 @@ class RetinaFace(Module):
         """Define Retina Module."""
         super().__init__()
 
-        return_layers = {'layer2': 1, 'layer3': 2, 'layer4': 3}
+        return_layers = {"layer2": 1, "layer3": 2, "layer4": 3}
         in_channel = 256
         out_channel = 256
 
