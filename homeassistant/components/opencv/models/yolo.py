@@ -15,19 +15,12 @@ from torch.nn import (
     ReLU,
     ReLU6,
     Sequential,
-    Upsample
+    Upsample,
 )
 import torch.nn.functional as F
 import yaml  # for torch hub
 
-from .common import (
-    SPPCSP,
-    Bottleneck,
-    BottleneckCSP,
-    BottleneckCSP2,
-    Concat,
-    Conv,
-)
+from .common import SPPCSP, Bottleneck, BottleneckCSP, BottleneckCSP2, Concat, Conv
 
 _LOGGER = logging.getLogger(__name__)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -163,9 +156,7 @@ class Detect(Module):
                 self.grid[i] = self._make_grid(nx, ny)
 
             y = x[i].sigmoid()
-            y[..., 0:2] = (
-                y[..., 0:2] * 2.0 - 0.5 + self.grid[i]
-            ) * self.stride[
+            y[..., 0:2] = (y[..., 0:2] * 2.0 - 0.5 + self.grid[i]) * self.stride[
                 i
             ]  # xy
             y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
@@ -302,7 +293,6 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             BottleneckCSP,
             BottleneckCSP2,
             SPPCSP,
-            VoVCSP,
         ]:
             c1, c2 = ch[f], args[0]
             c2 = make_divisible(c2 * gw, 8) if c2 != no else c2
