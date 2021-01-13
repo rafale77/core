@@ -25,7 +25,7 @@ import torchvision.models as models
 def Conv(inp, oup, k=3, stride=1, p=1, act=True):
     if k == 1:
         p = 0
-    if act==True:
+    if act == True:
         return Sequential(
             Conv2d(inp, oup, k, stride, padding=p, bias=False),
             BatchNorm2d(oup),
@@ -60,7 +60,7 @@ class SSH(Module):
 class FPN(Module):
     def __init__(self):
         super().__init__()
-        in_channels_list = [512,1024,2048]
+        in_channels_list = [512, 1024, 2048]
         self.output1 = Conv(in_channels_list[0], 256, k=1, stride=1)
         self.output2 = Conv(in_channels_list[1], 256, k=1, stride=1)
         self.output3 = Conv(in_channels_list[2], 256, k=1, stride=1)
@@ -134,7 +134,6 @@ class RetinaFace(Module):
         self.body = models._utils.IntermediateLayerGetter(
             models.resnet50(pretrained=True), return_layers
         )
-        in_channels_list = [512,1024,2048]
         self.fpn = FPN()
         self.ssh1 = SSH()
         self.ssh2 = SSH()
