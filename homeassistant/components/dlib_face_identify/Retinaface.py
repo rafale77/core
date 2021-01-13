@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 import cv2
+from skimage.transform import SimilarityTransform
 import numpy as np
 import torch
 from torch.cuda.amp import autocast
@@ -10,6 +11,7 @@ from torch.cuda.amp import autocast
 from .model import RetinaFace
 
 # flake8: noqa
+
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
@@ -22,18 +24,17 @@ REFERENCE_FACIAL_POINTS = [
     [62.72990036, 87],
 ]
 face_size = (112, 112)
-variance = [0.1, 0.2]
+variances = [0.1, 0.2]
+trans = SimilarityTransform()
 
 
-def get_reference_facial_points(output_size=face_size):
+def get_reference_facial_points():
 
     tmp_5pts = np.array(REFERENCE_FACIAL_POINTS)
-    tmp_crop_size = np.array(DEFAULT_CROP_SIZE)
-    x_scale = output_size[0] / tmp_crop_size[0]
-    y_scale = output_size[1] / tmp_crop_size[1]
+    x_scale = face_size[0] / DEFAULT_CROP_SIZE[0]
+    y_scale = face_size[1] / DEFAULT_CROP_SIZE[1]
     tmp_5pts[:, 0] *= x_scale
     tmp_5pts[:, 1] *= y_scale
-
     return tmp_5pts
 
 
@@ -53,12 +54,13 @@ class FaceDetector:
         )
         new_state_dict = OrderedDict()
         for k, v in state_dict.items():
-            name = k[7:]  # remove `module.
+            name = k[7:]  # remove "module".
             new_state_dict[name] = v
         self.model.load_state_dict(new_state_dict)
         self.model.eval()
+        #self.model = torch.jit.script(self.model)
 
-    def decode(self, loc, priors, variances):
+    def decode(self, loc, priors):
         """Decode locations from predictions using priors to undo
         the encoding we did for offset regression at train time.
         Args:
@@ -82,7 +84,7 @@ class FaceDetector:
         boxes[:, 2:] += boxes[:, :2]
         return boxes
 
-    def decode_landmark(self, pre, priors, variances):
+    def decode_landmark(self, pre, priors):
         """Decode landm from predictions using priors to undo
         the encoding we did for offset regression at train time.
         Args:
@@ -127,11 +129,11 @@ class FaceDetector:
         with torch.no_grad():
             with autocast():
                 loc, conf, landmarks = self.model(img)  # forward pass
-        boxes = self.decode(loc.data.squeeze(0), priors, variance)
+        boxes = self.decode(loc.data.squeeze(0), priors)
         h, w = img.shape[2], img.shape[3]
         boxes = boxes * torch.as_tensor([w, h, w, h], device=self.device)
         scores = conf.squeeze(0)
-        landmarks = self.decode_landmark(landmarks.squeeze(0), priors, variance)
+        landmarks = self.decode_landmark(landmarks.squeeze(0), priors)
         landmarks = landmarks * torch.as_tensor(
             [w, h, w, h, w, h, w, h, w, h], device=self.device
         )
@@ -150,16 +152,14 @@ class FaceDetector:
 
         # Do NMS
         keep = torch.ops.torchvision.nms(boxes, scores, self.nms_thresh)
-        boxes = torch.abs(boxes[keep, :])
         scores = scores[:, None][keep, :]
         landmarks = landmarks[keep, :].reshape(-1, 5, 2)
 
         # # keep top-K faster NMS
         landmarks = landmarks[: self.keep_top_k, :]
         scores = scores[: self.keep_top_k, :]
-        boxes = boxes[: self.keep_top_k, :]
 
-        return boxes, scores, landmarks
+        return scores, landmarks
 
     def detect_align(self, image, img, priors):
         """
@@ -176,25 +176,21 @@ class FaceDetector:
             landmarks:
                 face landmarks for each face
         """
-        boxes, scores, landmarks = self.detect_faces(img, priors)
+        scores, landmarks = self.detect_faces(img, priors)
         warped = []
         for src_pts in landmarks:
             if max(src_pts.shape) < 3 or min(src_pts.shape) != 2:
                 raise _LOGGER.warning(
                     "RetinaFace facial_pts.shape must be (K,2) or (2,K) and K>2"
                 )
-
             if src_pts.shape[0] == 2:
                 src_pts = src_pts.T
-
             if src_pts.shape != self.ref_pts.shape:
                 raise _LOGGER.warning(
                     "RetinaFace facial_pts and reference_pts must have the same shape"
                 )
-
-            tfm, _ = cv2.estimateAffinePartial2D(src_pts.cpu().numpy(), self.ref_pts)
-            face_img = cv2.warpAffine(image, tfm, face_size)
+            trans.estimate(src_pts.cpu().numpy(), self.ref_pts)
+            face_img = cv2.warpAffine(image, trans.params[0:2, :], face_size)
             warped.append(face_img)
-
         faces = torch.as_tensor(warped, dtype=torch.float32, device=self.device)
-        return faces, boxes, scores, landmarks
+        return faces, scores
