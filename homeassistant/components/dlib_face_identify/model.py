@@ -23,7 +23,6 @@ import torchvision.models as models
 # flake8: noqa
 
 def Conv(inp, oup, k=3, stride=1, p=1, act=True):
-    activation = Identity()
     if k == 1:
         p = 0
     if act==True:
