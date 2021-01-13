@@ -15,29 +15,24 @@ from torch.nn import (
     ReLU,
     ReLU6,
     Sequential,
+    Upsample
 )
 import torch.nn.functional as F
 import yaml  # for torch hub
 
 from .common import (
-    SPP,
     SPPCSP,
     Bottleneck,
     BottleneckCSP,
     BottleneckCSP2,
     Concat,
     Conv,
-    DWConv,
-    Focus,
-    HarDBlock,
-    HarDBlock2,
-    VoVCSP,
 )
-from .experimental import C3, CrossConv, MixConv2d
 
 _LOGGER = logging.getLogger(__name__)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 dtype = torch.float16
+
 # flake8: noqa
 
 
@@ -67,19 +62,6 @@ def initialize_weights(model):
             m.momentum = 0.03
         elif t in [LeakyReLU, ReLU, ReLU6]:
             m.inplace = True
-
-
-def scale_img(img, ratio=1.0, same_shape=False):  # img(16,3,256,416), r=ratio
-    # scales img(bs,3,y,x) by ratio
-    if ratio == 1.0:
-        return img
-    h, w = img.shape[2:]
-    s = (int(h * ratio), int(w * ratio))  # new size
-    img = F.interpolate(img, size=s, mode="bilinear", align_corners=False)  # resize
-    if not same_shape:  # pad/crop img
-        gs = 32  # (pixels) grid size
-        h, w = [math.ceil(x * ratio / gs) * gs for x in (h, w)]
-    return F.pad(img, [0, w - s[1], 0, h - s[0]], value=0.447)  # value = imagenet mean
 
 
 def fuse_conv_and_bn(conv, bn):
@@ -181,7 +163,9 @@ class Detect(Module):
                 self.grid[i] = self._make_grid(nx, ny)
 
             y = x[i].sigmoid()
-            y[..., 0:2] = (y[..., 0:2] * 2.0 - 0.5 + self.grid[i]) * self.stride[
+            y[..., 0:2] = (
+                y[..., 0:2] * 2.0 - 0.5 + self.grid[i]
+            ) * self.stride[
                 i
             ]  # xy
             y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
@@ -315,26 +299,17 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             Conv2d,
             Conv,
             Bottleneck,
-            SPP,
-            DWConv,
-            MixConv2d,
-            Focus,
-            CrossConv,
             BottleneckCSP,
             BottleneckCSP2,
             SPPCSP,
             VoVCSP,
-            C3,
         ]:
             c1, c2 = ch[f], args[0]
             c2 = make_divisible(c2 * gw, 8) if c2 != no else c2
             args = [c1, c2, *args[1:]]
-            if m in [BottleneckCSP, BottleneckCSP2, SPPCSP, VoVCSP, C3]:
+            if m in [BottleneckCSP, BottleneckCSP2, SPPCSP]:
                 args.insert(2, n)
                 n = 1
-        elif m in [HarDBlock, HarDBlock2]:
-            c1 = ch[f]
-            args = [c1, *args[:]]
         elif m is BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
@@ -352,9 +327,5 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         _LOGGER.warning(f"{i:>3}{f:>18}{n:>3}{np:10.0f}  {t:<40}{args:<30}")  # print
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)
         layers.append(m_)
-        if m in [HarDBlock, HarDBlock2]:
-            c2 = m_.get_out_ch()
-            ch.append(c2)
-        else:
-            ch.append(c2)
+        ch.append(c2)
     return Sequential(*layers), sorted(save)
