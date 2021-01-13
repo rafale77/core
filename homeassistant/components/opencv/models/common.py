@@ -5,15 +5,11 @@ import math
 from mish_cuda import MishCuda as Mish
 from torch import cat
 from torch.nn import (
-    AdaptiveAvgPool2d,
     BatchNorm2d,
     Conv2d,
-    Identity,
     MaxPool2d,
     Module,
     ModuleList,
-    ReLU,
-    ReLU6,
     Sequential,
 )
 
