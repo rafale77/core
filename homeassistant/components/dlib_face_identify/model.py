@@ -22,53 +22,34 @@ import torchvision.models as models
 
 # flake8: noqa
 
-
-def conv_bn(inp, oup, stride=1, leaky=0):
+def Conv(inp, oup, k=3, stride=1, p=1, act=True):
+    activation = Identity()
+    if k == 1:
+        p = 0
+    if act==True:
+        return Sequential(
+            Conv2d(inp, oup, k, stride, padding=p, bias=False),
+            BatchNorm2d(oup),
+            LeakyReLU(negative_slope=0, inplace=True),
+        )
     return Sequential(
-        Conv2d(inp, oup, 3, stride, 1, bias=False),
-        BatchNorm2d(oup),
-        LeakyReLU(negative_slope=leaky, inplace=True),
-    )
-
-
-def conv_bn_no_relu(inp, oup, stride):
-    return Sequential(
-        Conv2d(inp, oup, 3, stride, 1, bias=False),
+        Conv2d(inp, oup, k, stride, padding=p, bias=False),
         BatchNorm2d(oup),
     )
-
-
-def conv_bn1X1(inp, oup, stride, leaky=0):
-    return Sequential(
-        Conv2d(inp, oup, 1, stride, padding=0, bias=False),
-        BatchNorm2d(oup),
-        LeakyReLU(negative_slope=leaky, inplace=True),
-    )
-
 
 class SSH(Module):
-    def __init__(self, in_channel, out_channel):
+    def __init__(self):
         super().__init__()
-        assert out_channel % 4 == 0
-        leaky = 0
-        if out_channel <= 64:
-            leaky = 0.1
-        self.conv3X3 = conv_bn_no_relu(in_channel, out_channel // 2, stride=1)
-
-        self.conv5X5_1 = conv_bn(in_channel, out_channel // 4, stride=1, leaky=leaky)
-        self.conv5X5_2 = conv_bn_no_relu(out_channel // 4, out_channel // 4, stride=1)
-
-        self.conv7X7_2 = conv_bn(
-            out_channel // 4, out_channel // 4, stride=1, leaky=leaky
-        )
-        self.conv7x7_3 = conv_bn_no_relu(out_channel // 4, out_channel // 4, stride=1)
+        self.conv3X3 = Conv(256, 256 // 2, stride=1, act=False)
+        self.conv5X5_1 = Conv(256, 256 // 4, stride=1)
+        self.conv5X5_2 = Conv(256 // 4, 256 // 4, stride=1, act=False)
+        self.conv7X7_2 = Conv(256 // 4, 256 // 4, stride=1)
+        self.conv7x7_3 = Conv(256 // 4, 256 // 4, stride=1, act=False)
 
     def forward(self, inpt):
         conv3X3 = self.conv3X3(inpt)
-
         conv5X5_1 = self.conv5X5_1(inpt)
         conv5X5 = self.conv5X5_2(conv5X5_1)
-
         conv7X7_2 = self.conv7X7_2(conv5X5_1)
         conv7X7 = self.conv7x7_3(conv7X7_2)
 
@@ -78,23 +59,14 @@ class SSH(Module):
 
 
 class FPN(Module):
-    def __init__(self, in_channels_list, out_channels):
+    def __init__(self):
         super().__init__()
-        leaky = 0
-        if out_channels <= 64:
-            leaky = 0.1
-        self.output1 = conv_bn1X1(
-            in_channels_list[0], out_channels, stride=1, leaky=leaky
-        )
-        self.output2 = conv_bn1X1(
-            in_channels_list[1], out_channels, stride=1, leaky=leaky
-        )
-        self.output3 = conv_bn1X1(
-            in_channels_list[2], out_channels, stride=1, leaky=leaky
-        )
-
-        self.merge1 = conv_bn(out_channels, out_channels, leaky=leaky)
-        self.merge2 = conv_bn(out_channels, out_channels, leaky=leaky)
+        in_channels_list = [512,1024,2048]
+        self.output1 = Conv(in_channels_list[0], 256, k=1, stride=1)
+        self.output2 = Conv(in_channels_list[1], 256, k=1, stride=1)
+        self.output3 = Conv(in_channels_list[2], 256, k=1, stride=1)
+        self.merge1 = Conv(256, 256)
+        self.merge2 = Conv(256, 256)
 
     def forward(self, inpt):
         # names = list(inpt.keys())
@@ -121,45 +93,35 @@ class FPN(Module):
 
 
 class ClassHead(Module):
-    def __init__(self, inchannels=512, num_anchors=3):
+    def __init__(self):
         super().__init__()
-        self.num_anchors = num_anchors
-        self.conv1x1 = Conv2d(
-            inchannels, self.num_anchors * 2, kernel_size=(1, 1), stride=1, padding=0
-        )
+        self.conv1x1 = Conv2d(256, 4, kernel_size=(1, 1), stride=1, padding=0)
 
     def forward(self, x):
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
-
         return out.view(out.shape[0], -1, 2)
 
 
 class BboxHead(Module):
-    def __init__(self, inchannels=512, num_anchors=3):
+    def __init__(self):
         super().__init__()
-        self.conv1x1 = Conv2d(
-            inchannels, num_anchors * 4, kernel_size=(1, 1), stride=1, padding=0
-        )
+        self.conv1x1 = Conv2d(256, 8, kernel_size=(1, 1), stride=1, padding=0)
 
     def forward(self, x):
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
-
         return out.view(out.shape[0], -1, 4)
 
 
 class LandmarkHead(Module):
-    def __init__(self, inchannels=512, num_anchors=3):
+    def __init__(self):
         super().__init__()
-        self.conv1x1 = Conv2d(
-            inchannels, num_anchors * 10, kernel_size=(1, 1), stride=1, padding=0
-        )
+        self.conv1x1 = Conv2d(256, 20, kernel_size=(1, 1), stride=1, padding=0)
 
     def forward(self, x):
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
-
         return out.view(out.shape[0], -1, 10)
 
 
@@ -169,42 +131,35 @@ class RetinaFace(Module):
         super().__init__()
 
         return_layers = {"layer2": 1, "layer3": 2, "layer4": 3}
-        in_channel = 256
-        out_channel = 256
 
         self.body = models._utils.IntermediateLayerGetter(
             models.resnet50(pretrained=True), return_layers
         )
-        in_channels_stage2 = in_channel
-        in_channels_list = [
-            in_channels_stage2 * 2,
-            in_channels_stage2 * 4,
-            in_channels_stage2 * 8,
-        ]
-        self.fpn = FPN(in_channels_list, out_channel)
-        self.ssh1 = SSH(out_channel, out_channel)
-        self.ssh2 = SSH(out_channel, out_channel)
-        self.ssh3 = SSH(out_channel, out_channel)
-        self.ClassHead = self._make_class_head(fpn_num=3, inchannels=out_channel)
-        self.BboxHead = self._make_bbox_head(fpn_num=3, inchannels=out_channel)
-        self.LandmarkHead = self._make_landmark_head(fpn_num=3, inchannels=out_channel)
+        in_channels_list = [512,1024,2048]
+        self.fpn = FPN()
+        self.ssh1 = SSH()
+        self.ssh2 = SSH()
+        self.ssh3 = SSH()
+        self.ClassHead = self._make_class_head()
+        self.BboxHead = self._make_bbox_head()
+        self.LandmarkHead = self._make_landmark_head()
 
-    def _make_class_head(self, fpn_num=3, inchannels=64, anchor_num=2):
+    def _make_class_head(self):
         classhead = ModuleList()
-        for _ in range(fpn_num):
-            classhead.append(ClassHead(inchannels, anchor_num))
+        for _ in range(3):
+            classhead.append(ClassHead())
         return classhead
 
-    def _make_bbox_head(self, fpn_num=3, inchannels=64, anchor_num=2):
+    def _make_bbox_head(self):
         bboxhead = ModuleList()
-        for _ in range(fpn_num):
-            bboxhead.append(BboxHead(inchannels, anchor_num))
+        for _ in range(3):
+            bboxhead.append(BboxHead())
         return bboxhead
 
-    def _make_landmark_head(self, fpn_num=3, inchannels=64, anchor_num=2):
+    def _make_landmark_head(self):
         landmarkhead = ModuleList()
-        for _ in range(fpn_num):
-            landmarkhead.append(LandmarkHead(inchannels, anchor_num))
+        for _ in range(3):
+            landmarkhead.append(LandmarkHead())
         return landmarkhead
 
     def forward(self, inputs):
@@ -315,15 +270,13 @@ def get_blocks(num_layers):
 class Arcface(Module):
     def __init__(self):
         super().__init__()
-        drop_ratio = 0.6
-        num_layers = 50
-        blocks = get_blocks(num_layers)
+        blocks = get_blocks(50)
         self.input_layer = Sequential(
             Conv2d(3, 64, (3, 3), 1, 1, bias=False), BatchNorm2d(64), PReLU(64)
         )
         self.output_layer = Sequential(
             BatchNorm2d(512),
-            Dropout(drop_ratio),
+            Dropout(0.6),
             Flatten(),
             Linear(512 * 7 * 7, 512),
             BatchNorm1d(512),
