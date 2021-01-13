@@ -59,6 +59,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
         )
         self.arcmodel.eval()
+        #self.arcmodel = torch.jit.script(self.arcmodel)
         self._camera = camera_entity
         if name:
             self._name = name
@@ -103,7 +104,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def preprocessor(self, img_raw):
         """Convert cv2/PIL image to tensor."""
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
-        img -= torch.tensor([104, 117, 123]).to(self.device)  # BGR
+        img -= torch.as_tensor([104, 117, 123], device=self.device)  # BGR
         img = img.permute(2, 0, 1).unsqueeze(0)
         return img
 
@@ -167,22 +168,22 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def process_image(self, image):
         """Process image."""
-        unknowns = []
+        scores = []
         found = []
         if self._det == "on":
             img = self.preprocessor(image)
             if self.priors == []:
                 self.priors = self.prior_box(img.shape[2:])
-            faces, unknowns, scores, _ = self.face_detector.detect_align(
+            faces, scores = self.face_detector.detect_align(
                 image, img, self.priors
             )
             if len(scores) > 0:
-                with torch.cuda.amp.autocast():
+                with torch.cuda.amp.autocast() and torch.no_grad():
                     embs = self.arcmodel(self.faces_preprocessing(faces))
                 diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
                 dist = torch.sum(torch.pow(diff, 2), dim=1)
                 minimum, min_idx = torch.min(dist, dim=1)
                 min_idx[minimum > self.threshold] = -1  # if no match
-                for idx, _ in enumerate(unknowns):
+                for idx, _ in enumerate(scores):
                     found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
-        self.process_faces(found, len(unknowns))
+        self.process_faces(found, len(scores))
