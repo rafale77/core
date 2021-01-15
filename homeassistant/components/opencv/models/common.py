@@ -1,18 +1,14 @@
-# This file contains modules common to various models
-from collections import OrderedDict, defaultdict
-import math
-
 from mish_cuda import MishCuda as Mish
 from torch import cat
 from torch.nn import (
     BatchNorm2d,
     Conv2d,
+    Identity,
     MaxPool2d,
     Module,
     ModuleList,
     Sequential,
 )
-
 # flake8: noqa
 
 
@@ -31,7 +27,6 @@ class Conv(Module):
         super().__init__()
         self.conv = Conv2d(c1, c2, k, s, autopad(k, p), groups=g, bias=False)
         self.bn = BatchNorm2d(c2)
-        # self.act = Hardswish() if act else Identity()
         self.act = Mish() if act else Identity()
 
     def forward(self, x):
