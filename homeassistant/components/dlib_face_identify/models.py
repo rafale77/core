@@ -71,7 +71,7 @@ def fuse(model):  # fuse model Conv2d() + BatchNorm2d() layers
             m.bn2 = Identity()  # remove batchnorm
             m.conv3 = torch.nn.utils.fuse_conv_bn_eval(m.conv3, m.bn3)
             m.bn3 = Identity()  # remove batchnorm
-            #m.forward = m.fuseforward  # update forward
+            # m.forward = m.fuseforward  # update forward
         if isinstance(m, IntermediateLayerGetter):
             m._non_persistent_buffers_set = set()
             m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
