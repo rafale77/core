@@ -366,7 +366,6 @@ class Arcface(Module):
 
 
 class FaceEncoder:
-
     def __init__(self):
         """ArcFace Recognizer with 5points landmarks."""
 
