@@ -17,9 +17,8 @@ from homeassistant.components.image_processing import (
     ImageProcessingFaceEntity,
 )
 from homeassistant.core import split_entity_id
+from .models import FaceDetector, FaceEncoder
 
-from .Retinaface import FaceDetector
-from .model import Arcface
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
@@ -54,12 +53,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         self.threshold = 1
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.face_detector = FaceDetector()
-        self.arcmodel = Arcface().to(self.device)
-        self.arcmodel.load_state_dict(
-            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
-        )
-        self.arcmodel.eval()
-        #self.arcmodel = torch.jit.script(self.arcmodel)
+        self.face_recog = FaceEncoder()
         self._camera = camera_entity
         if name:
             self._name = name
@@ -135,8 +129,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     priors = self.prior_box(img.shape[2:])
                     face = self.face_detector.detect_align(pic, img, priors)[0]
                     if len(face) == 1:
-                        with torch.no_grad():
-                            embs.append(self.arcmodel(self.faces_preprocessing(face)))
+                        embs.append(self.face_recog.recog(self.faces_preprocessing(face)))
                     else:
                         _LOGGER.error(person_img + " can't be used for training")
                 faces.append(torch.cat(embs).mean(0, keepdim=True))
@@ -172,14 +165,11 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         found = []
         if self._det == "on":
             img = self.preprocessor(image)
-            if self.priors == []:
+            if len(self.priors) < 1:
                 self.priors = self.prior_box(img.shape[2:])
-            faces, scores = self.face_detector.detect_align(
-                image, img, self.priors
-            )
+            faces, scores = self.face_detector.detect_align(image, img, self.priors)
             if len(scores) > 0:
-                with torch.cuda.amp.autocast() and torch.no_grad():
-                    embs = self.arcmodel(self.faces_preprocessing(faces))
+                embs = self.face_recog.recog(self.faces_preprocessing(faces))
                 diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
                 dist = torch.sum(torch.pow(diff, 2), dim=1)
                 minimum, min_idx = torch.min(dist, dim=1)
