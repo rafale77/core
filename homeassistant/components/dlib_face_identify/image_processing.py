@@ -17,6 +17,7 @@ from homeassistant.components.image_processing import (
     ImageProcessingFaceEntity,
 )
 from homeassistant.core import split_entity_id
+
 from .models import FaceDetector, FaceEncoder
 
 
