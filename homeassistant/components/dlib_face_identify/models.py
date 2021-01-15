@@ -16,6 +16,7 @@ from .net import bottleneck_IR_SE, get_blocks, Flatten, FPN, SSH, ClassHead, Bbo
 
 
 Bottleneck = models.resnet.Bottleneck
+IntermediateLayerGetter = models._utils.IntermediateLayerGetter
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
 DEFAULT_CROP_SIZE = (96, 112)
@@ -40,40 +41,22 @@ def get_reference_facial_points():
     tmp_5pts[:, 1] *= y_scale
     return tmp_5pts
 
-def fuse_conv_and_bn(conv, bn):
-    # https://tehnokv.com/posts/fusing-batchnorm-and-conv/
-    with torch.no_grad():
-        # init
-        fusedconv = Conv2d(conv.in_channels,
-                              conv.out_channels,
-                              kernel_size=conv.kernel_size,
-                              stride=conv.stride,
-                              padding=conv.padding,
-                              bias=True).to(conv.weight.device)
-
-        # prepare filters
-        w_conv = conv.weight.clone().view(conv.out_channels, -1)
-        w_bn = torch.diag(bn.weight.div(torch.sqrt(bn.eps + bn.running_var)))
-        fusedconv.weight.copy_(torch.mm(w_bn, w_conv).view(fusedconv.weight.size()))
-
-        # prepare spatial bias
-        b_conv = torch.zeros(conv.weight.size(0), device=conv.weight.device) if conv.bias is None else conv.bias
-        b_bn = bn.bias - bn.weight.mul(bn.running_mean).div(torch.sqrt(bn.running_var + bn.eps))
-        fusedconv.bias.copy_(torch.mm(w_bn, b_conv.reshape(-1, 1)).reshape(-1) + b_bn)
-
-        return fusedconv
 
 def fuse(model):  # fuse model Conv2d() + BatchNorm2d() layers
     for m in model.modules():
         if type(m) is Bottleneck:
             m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatability
-            m.conv1 = fuse_conv_and_bn(m.conv1, m.bn1)  # update conv
+            m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
             m.bn1 = Identity()  # remove batchnorm
-            m.conv2 = fuse_conv_and_bn(m.conv2, m.bn2)  # update conv
+            m.conv2 = torch.nn.utils.fuse_conv_bn_eval(m.conv2, m.bn2)
             m.bn2 = Identity()  # remove batchnorm
-            m.conv3 = fuse_conv_and_bn(m.conv3, m.bn3)  # update conv
+            m.conv3 = torch.nn.utils.fuse_conv_bn_eval(m.conv3, m.bn3)
             m.bn3 = Identity()  # remove batchnorm
             #m.forward = m.fuseforward  # update forward
+        if type(m) is IntermediateLayerGetter:
+            m._non_persistent_buffers_set = set()
+            m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
+            m.bn1 = Identity()  # remove batchnorm
     return model
 
 
@@ -89,47 +72,10 @@ def fuse_bn_sequential(block):
     for m in block.children():
         if len(stack) == 0:
             stack.append(m)
-        elif isinstance(m, BatchNorm2d):
-            if isinstance(stack[-1], Conv2d):
-                bn_st_dict = m.state_dict()
-                conv_st_dict = stack[-1].state_dict()
-
-                # BatchNorm params
-                eps = m.eps
-                mu = bn_st_dict['running_mean']
-                var = bn_st_dict['running_var']
-                gamma = bn_st_dict['weight']
-
-                if 'bias' in bn_st_dict:
-                    beta = bn_st_dict['bias']
-                else:
-                    beta = torch.zeros(gamma.size(0)).float().to(gamma.device)
-
-                # Conv params
-                W = conv_st_dict['weight']
-                if 'bias' in conv_st_dict:
-                    bias = conv_st_dict['bias']
-                else:
-                    bias = torch.zeros(W.size(0)).float().to(gamma.device)
-
-                denom = torch.sqrt(var + eps)
-                b = beta - gamma.mul(mu).div(denom)
-                A = gamma.div(denom)
-                bias *= A
-                A = A.expand_as(W.transpose(0, -1)).transpose(0, -1)
-
-                W.mul_(A)
-                bias.add_(b)
-
-                stack[-1].weight.data.copy_(W)
-                if stack[-1].bias is None:
-                    stack[-1].bias = torch.nn.Parameter(bias)
-                else:
-                    stack[-1].bias.data.copy_(bias)
-
+        elif isinstance(m, BatchNorm2d) and isinstance(stack[-1], Conv2d):
+                stack[-1] = torch.nn.utils.fuse_conv_bn_eval(stack[-1], m)
         else:
             stack.append(m)
-
     if len(stack) > 1:
         return Sequential(*stack)
     else:
@@ -219,14 +165,14 @@ class FaceDetector:
         self.ref_pts = get_reference_facial_points()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #        self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
-#        self.model = torch.load(home+model/RetinaFace.pth", map_location=self.device)
-        self.model = RetinaFace().to(self.device)
-        self.model.load_state_dict(torch.load(
-            home + "model/Resnet50_Final.pth", map_location=self.device
-        ))
-        self.model = fuse(self.model)
-        self.model = fuse_bn_recursively(self.model)
-        self.model.eval()
+        self.model = torch.load(home+"model/RetinaFace.pth", map_location=self.device)
+#        self.model = RetinaFace().to(self.device)
+#        self.model.load_state_dict(torch.load(
+#            home + "model/Resnet50_Final.pth", map_location=self.device
+#        ))
+#        self.model.eval()
+#        self.model = fuse(self.model)
+#        self.model = fuse_bn_recursively(self.model)
 #        self.traced = False
 #        torch.save(self.model, home+"model/RetinaFace.pth")
 
@@ -404,13 +350,14 @@ class FaceEncoder:
         """ArcFace Recognizer with 5points landmarks."""
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#        self.arcmodel = torch.load(home+"model/ArcFace.pth", map_location=self.device)
-        self.arcmodel = Arcface().to(self.device)
-        self.arcmodel.load_state_dict(
-            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
-        )
-        self.arcmodel = fuse_bn_recursively(self.arcmodel)
-        self.arcmodel.eval()
+        self.arcmodel = torch.load(home+"model/ArcFace.pth", map_location=self.device)
+#        self.arcmodel = Arcface().to(self.device)
+#        self.arcmodel.load_state_dict(
+#            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
+#        )
+#        self.arcmodel.eval()
+#        self.arcmodel = fuse_bn_recursively(self.arcmodel)
+
 #        torch.save(self.arcmodel, home+"model/ArcFace.pth")
 #        self.arcmodel = torch.jit.script(self.arcmodel)
 #        self.arcmodel.save(home+"model/ArcfaceJIT.pth")
