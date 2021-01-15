@@ -20,7 +20,6 @@ from homeassistant.core import split_entity_id
 
 from .models import FaceDetector, FaceEncoder
 
-
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
 ATTR_NAME = "name"
