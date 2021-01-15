@@ -21,11 +21,12 @@ from torch.nn.functional import softmax
 import torchvision.models as models
 
 from .net import (
-    Flatten,
+
     FPN,
     SSH,
-    ClassHead,
     BboxHead,
+    ClassHead,
+    Flatten,
     LandmarkHead,
     bottleneck_IR_SE,
     get_blocks,
