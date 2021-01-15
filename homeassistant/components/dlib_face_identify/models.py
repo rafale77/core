@@ -21,7 +21,6 @@ from torch.nn.functional import softmax
 import torchvision.models as models
 
 from .net import (
-
     FPN,
     SSH,
     BboxHead,
@@ -184,8 +183,8 @@ class FaceDetector:
         self.keep_top_k = 750
         self.ref_pts = get_reference_facial_points()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    #        self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
-        self.model = torch.load(home+"model/RetinaFace.pth", map_location=self.device)
+        # self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
+        self.model = torch.load(home + "model/RetinaFace.pth", map_location=self.device)
     #        self.model = RetinaFace().to(self.device)
     #        self.model.load_state_dict(torch.load(
     #            home + "model/Resnet50_Final.pth", map_location=self.device
@@ -370,7 +369,8 @@ class FaceEncoder:
         """ArcFace Recognizer with 5points landmarks."""
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.arcmodel = torch.load(home+"model/ArcFace.pth", map_location=self.device)
+        self.arcmodel = torch.load(home + "model/ArcFace.pth", map_location=self.device)
+
     #        self.arcmodel = Arcface().to(self.device)
     #        self.arcmodel.load_state_dict(
     #            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
