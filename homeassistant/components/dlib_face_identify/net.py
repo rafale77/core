@@ -15,14 +15,13 @@ from torch.nn import (
 )
 from torch.nn.functional import interpolate, relu
 
-
 # flake8: noqa
 
 
 def Conv(inp, oup, k=3, stride=1, p=1, act=True):
     if k == 1:
         p = 0
-    if act == True:
+    if act:
         return Sequential(
             Conv2d(inp, oup, k, stride, padding=p, bias=False),
             BatchNorm2d(oup),
