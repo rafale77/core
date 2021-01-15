@@ -183,17 +183,17 @@ class FaceDetector:
         self.keep_top_k = 750
         self.ref_pts = get_reference_facial_points()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#        self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
+    #        self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
         self.model = torch.load(home+"model/RetinaFace.pth", map_location=self.device)
-#        self.model = RetinaFace().to(self.device)
-#        self.model.load_state_dict(torch.load(
-#            home + "model/Resnet50_Final.pth", map_location=self.device
-#        ))
-#        self.model.eval()
-#        self.model = fuse(self.model)
-#        self.model = fuse_bn_recursively(self.model)
-#        self.traced = False
-#        torch.save(self.model, home+"model/RetinaFace.pth")
+    #        self.model = RetinaFace().to(self.device)
+    #        self.model.load_state_dict(torch.load(
+    #            home + "model/Resnet50_Final.pth", map_location=self.device
+    #        ))
+    #        self.model.eval()
+    #        self.model = fuse(self.model)
+    #        self.model = fuse_bn_recursively(self.model)
+    #        self.traced = False
+    #        torch.save(self.model, home+"model/RetinaFace.pth")
 
     def decode(self, loc, priors):
         """Decode locations from predictions using priors to undo
@@ -261,9 +261,9 @@ class FaceDetector:
         """
         with torch.no_grad():
             with torch.cuda.amp.autocast():
-#                if self.traced == False:
-#                   self.model = torch.jit.trace(self.model, (img))
-#                    self.traced = True
+                #  if self.traced == False:
+                #  self.model = torch.jit.trace(self.model, (img))
+                #  self.traced = True
                 loc, conf, landmarks = self.model(img)  # forward pass
         boxes = self.decode(loc.data.squeeze(0), priors)
         h, w = img.shape[2], img.shape[3]
@@ -370,16 +370,16 @@ class FaceEncoder:
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.arcmodel = torch.load(home+"model/ArcFace.pth", map_location=self.device)
-#        self.arcmodel = Arcface().to(self.device)
-#        self.arcmodel.load_state_dict(
-#            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
-#        )
-#        self.arcmodel.eval()
-#        self.arcmodel = fuse_bn_recursively(self.arcmodel)
+    #        self.arcmodel = Arcface().to(self.device)
+    #        self.arcmodel.load_state_dict(
+    #            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
+    #        )
+    #        self.arcmodel.eval()
+    #        self.arcmodel = fuse_bn_recursively(self.arcmodel)
 
-#        torch.save(self.arcmodel, home+"model/ArcFace.pth")
-#        self.arcmodel = torch.jit.script(self.arcmodel)
-#        self.arcmodel.save(home+"model/ArcfaceJIT.pth")
+    #        torch.save(self.arcmodel, home+"model/ArcFace.pth")
+    #        self.arcmodel = torch.jit.script(self.arcmodel)
+    #        self.arcmodel.save(home+"model/ArcfaceJIT.pth")
 
     def recog(self, x):
         with torch.no_grad():
