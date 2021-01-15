@@ -15,7 +15,6 @@ from torch.nn import (
     ReLU,
     ReLU6,
     Sequential,
-    Upsample,
 )
 import yaml  # for torch hub
 
