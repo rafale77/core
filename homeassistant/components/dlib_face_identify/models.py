@@ -1,16 +1,35 @@
-from collections import OrderedDict
 import logging
 from pathlib import Path
 
 import cv2
-from skimage.transform import SimilarityTransform
 import numpy as np
+from skimage.transform import SimilarityTransform
 import torch
-from torch.nn import BatchNorm1d, BatchNorm2d, Conv2d, Dropout, Identity, Linear, Module, ModuleList, PReLU, Sequential
+from torch.nn import (
+    BatchNorm1d,
+    BatchNorm2d,
+    Conv2d,
+    Dropout,
+    Identity,
+    Linear,
+    Module,
+    ModuleList,
+    PReLU,
+    Sequential,
+)
 from torch.nn.functional import softmax
 import torchvision.models as models
 
-from .net import bottleneck_IR_SE, get_blocks, Flatten, FPN, SSH, ClassHead, BboxHead, LandmarkHead, SEModule
+from .net import (
+    Flatten,
+    FPN,
+    SSH,
+    ClassHead,
+    BboxHead,
+    LandmarkHead,
+    bottleneck_IR_SE,
+    get_blocks,
+)
 
 # flake8: noqa
 
@@ -44,8 +63,8 @@ def get_reference_facial_points():
 
 def fuse(model):  # fuse model Conv2d() + BatchNorm2d() layers
     for m in model.modules():
-        if type(m) is Bottleneck:
-            m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatability
+        if isinstance(m, Bottleneck):
+            m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
             m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
             m.bn1 = Identity()  # remove batchnorm
             m.conv2 = torch.nn.utils.fuse_conv_bn_eval(m.conv2, m.bn2)
@@ -53,7 +72,7 @@ def fuse(model):  # fuse model Conv2d() + BatchNorm2d() layers
             m.conv3 = torch.nn.utils.fuse_conv_bn_eval(m.conv3, m.bn3)
             m.bn3 = Identity()  # remove batchnorm
             #m.forward = m.fuseforward  # update forward
-        if type(m) is IntermediateLayerGetter:
+        if isinstance(m, IntermediateLayerGetter):
             m._non_persistent_buffers_set = set()
             m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
             m.bn1 = Identity()  # remove batchnorm
@@ -73,13 +92,12 @@ def fuse_bn_sequential(block):
         if len(stack) == 0:
             stack.append(m)
         elif isinstance(m, BatchNorm2d) and isinstance(stack[-1], Conv2d):
-                stack[-1] = torch.nn.utils.fuse_conv_bn_eval(stack[-1], m)
+            stack[-1] = torch.nn.utils.fuse_conv_bn_eval(stack[-1], m)
         else:
             stack.append(m)
     if len(stack) > 1:
         return Sequential(*stack)
-    else:
-        return stack[0]
+    return stack[0]
 
 
 def fuse_bn_recursively(model):
@@ -153,6 +171,7 @@ class RetinaFace(Module):
             ldm_regressions,
         )
         return output
+
 
 class FaceDetector:
     def __init__(self):
