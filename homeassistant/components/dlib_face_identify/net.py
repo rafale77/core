@@ -120,7 +120,6 @@ class LandmarkHead(Module):
         return out.view(out.shape[0], -1, 10)
 
 
-
 #  Original Arcface Model ######################################
 
 
