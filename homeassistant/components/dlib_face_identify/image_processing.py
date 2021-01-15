@@ -129,7 +129,9 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     priors = self.prior_box(img.shape[2:])
                     face = self.face_detector.detect_align(pic, img, priors)[0]
                     if len(face) == 1:
-                        embs.append(self.face_recog.recog(self.faces_preprocessing(face)))
+                        embs.append(
+                            self.face_recog.recog(self.faces_preprocessing(face))
+                        )
                     else:
                         _LOGGER.error(person_img + " can't be used for training")
                 faces.append(torch.cat(embs).mean(0, keepdim=True))
