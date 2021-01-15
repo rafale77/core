@@ -364,6 +364,7 @@ class Arcface(Module):
         norm = torch.norm(x, 2, 1, True)
         return torch.floor_divide(x, norm)
 
+
 class FaceEncoder:
 
     def __init__(self):
