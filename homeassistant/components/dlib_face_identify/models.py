@@ -185,6 +185,7 @@ class FaceDetector:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
         self.model = torch.load(home + "model/RetinaFace.pth", map_location=self.device)
+
     #        self.model = RetinaFace().to(self.device)
     #        self.model.load_state_dict(torch.load(
     #            home + "model/Resnet50_Final.pth", map_location=self.device
