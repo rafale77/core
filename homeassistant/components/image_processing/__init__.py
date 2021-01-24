@@ -270,7 +270,7 @@ class ImageProcessingFaceEntity(ImageProcessingEntity):
                 if face[ATTR_CONFIDENCE] < self.confidence:
                     continue
 
-            face.update({ATTR_ENTITY_ID: self.entity_id})
+        #    face.update({ATTR_ENTITY_ID: self.entity_id})
             self.hass.async_add_job(self.hass.bus.async_fire, EVENT_DETECT_FACE, face)
 
         # Update entity store
