@@ -106,7 +106,8 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
     def faces_preprocessing(self, faces):
         """Forward."""
         faces = torch.as_tensor(faces, dtype=torch.float32, device=self.device)
-        norma = trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+#        norma = trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+        norma = trans.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         faces = norma(faces.permute(0, 3, 1, 2).div(255))
         #faces = np.transpose(faces, (0, 3, 1, 2))
         return faces
