@@ -35,7 +35,7 @@ sys.path.insert(
     str(Path.home())
     + "/.local/lib/python3.8/site-packages/homeassistant/components/opencv/",
 )
-model = torch.load(home + "yolov4-p5.pt", device)["model"].fuse().eval().half()
+model = torch.load(home + "yolov4-p5.pt", device)["model"].eval.fuse().half()
 with open(home + "cococlasses.txt") as f:
     class_names = [cname.strip() for cname in f.readlines()]
 
