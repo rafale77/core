@@ -18,8 +18,9 @@ from torch.nn import (
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
-    return Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-        padding=1, bias=False)
+    return Conv2d(
+        in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False
+    )
 
 
 def l2_norm(input, axis=1):
@@ -65,8 +66,9 @@ class Bottleneck(Module):
         super().__init__()
         self.conv1 = Conv2d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = BatchNorm2d(planes)
-        self.conv2 = Conv2d(planes, planes, kernel_size=3, stride=stride,
-            padding=1, bias=False)
+        self.conv2 = Conv2d(
+            planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
         self.bn2 = BatchNorm2d(planes)
         self.conv3 = Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = BatchNorm2d(planes * 4)
@@ -105,7 +107,7 @@ class SEBlock(Module):
             Linear(channel, channel // reduction),
             PReLU(),
             Linear(channel // reduction, channel),
-            Sigmoid()
+            Sigmoid(),
         )
 
     def forward(self, x):
@@ -172,7 +174,6 @@ class IRBlock(Module):
 
 
 class ResNet(Module):
-
     def __init__(self, layers, use_se=True, im_size=112):
         block = IRBlock
         self.inplanes = 64
@@ -209,13 +210,20 @@ class ResNet(Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = Sequential(
-                Conv2d(self.inplanes, planes * block.expansion,
-                    kernel_size=1, stride=stride, bias=False),
+                Conv2d(
+                    self.inplanes,
+                    planes * block.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
                 BatchNorm2d(planes * block.expansion),
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, use_se=self.use_se))
+        layers.append(
+            block(self.inplanes, planes, stride, downsample, use_se=self.use_se)
+        )
         self.inplanes = planes
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes, use_se=self.use_se))
