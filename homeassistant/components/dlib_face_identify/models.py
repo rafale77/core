@@ -3,8 +3,9 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-#import onnx
-#import onnx_tensorrt.backend as backend
+
+# import onnx
+# import onnx_tensorrt.backend as backend
 from skimage.transform import SimilarityTransform
 import torch
 from torch.nn import (
@@ -21,8 +22,9 @@ from torch.nn import (
 )
 from torch.nn.functional import softmax
 import torchvision.models as models
-#from torch2trt import TRTModule
-from .models2 import ResNet, IRBlock
+
+# from torch2trt import TRTModule
+from .models2 import IRBlock, ResNet
 from .net import (
     FPN,
     SSH,
