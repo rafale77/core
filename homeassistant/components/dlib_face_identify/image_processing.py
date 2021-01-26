@@ -77,26 +77,27 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         feature_maps = [
             [ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps
         ]
-        min_sizes_ = [[16, 32], [64, 128], [256, 512]]
+        min_sizes = [[16, 32], [64, 128], [256, 512]]
         anchors = []
 
         for k, f in enumerate(feature_maps):
-            min_sizes = min_sizes_[k]
-            for i, j in product(range(f[0]), range(f[1])):
-                for min_size in min_sizes:
-                    s_kx = min_size / image_size[1]
-                    s_ky = min_size / image_size[0]
-                    dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
-                    dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
-                    for cy, cx in product(dense_cy, dense_cx):
-                        anchors += [cx, cy, s_kx, s_ky]
-
-        # back to torch land
-        output = torch.as_tensor(anchors, device=self.device).view(-1, 4)
-        return output
+            min_size = min_sizes[k]
+            mat = np.array(list(product(range(f[0]), range(f[1]), min_size))).astype(np.float32)
+            mat[:, 0], mat[:, 1] = ((mat[:, 1] + 0.5) * steps[k] / image_size[1],
+                                    (mat[:, 0] + 0.5) * steps[k] / image_size[0])
+            mat = np.concatenate([mat, mat[:, 2:3]], axis=1)
+            mat[:, 2] = mat[:, 2] / image_size[1]
+            mat[:, 3] = mat[:, 3] / image_size[0]
+            anchors.append(mat)
+        output = np.concatenate(anchors, axis=0)
+        return torch.as_tensor(output, device=self.device)
 
     def preprocessor(self, img_raw):
         """Convert cv2/PIL image to tensor."""
+        #img_raw = np.array(img_raw)
+        #img_raw = img_raw - [104.0, 117.0, 123.0]
+        #img = np.transpose(img_raw, (2,0,1))
+        #return img[np.newaxis, ...].astype('float32')
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
         img -= torch.as_tensor([104, 117, 123], device=self.device)  # BGR
         return img.permute(2, 0, 1).unsqueeze(0)
@@ -105,7 +106,6 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         """Prepare face tensor."""
         faces = torch.as_tensor(faces, dtype=torch.float32, device=self.device)
         norma = trans.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        # faces = np.transpose(faces, (0, 3, 1, 2))
         return norma(faces.permute(0, 3, 1, 2).div(255))
 
     def train_faces(self):
