@@ -4,8 +4,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# import onnx
-# import onnx_tensorrt.backend as backend
+import onnx
+import onnx_tensorrt.backend as backend
 from skimage.transform import SimilarityTransform
 import torch
 from torch.nn import (
@@ -15,25 +15,25 @@ from torch.nn import (
     Dropout,
     Identity,
     Linear,
+    MaxPool2d,
     Module,
     ModuleList,
     PReLU,
+    ReLU,
     Sequential,
+    init,
 )
 from torch.nn.functional import softmax
 import torchvision.models as models
 
 # from torch2trt import TRTModule
-from .models2 import IRBlock, ResNet
 from .net import (
     FPN,
     SSH,
     BboxHead,
     ClassHead,
-    Flatten,
+    IRBlock,
     LandmarkHead,
-    bottleneck_IR_SE,
-    get_blocks,
 )
 
 # flake8: noqa
@@ -87,7 +87,7 @@ def fuse(model):  # fuse model Conv2d() + BatchNorm2d() layers
             m.conv2 = torch.nn.utils.fuse_conv_bn_eval(m.conv2, m.bn2)
             m.bn2 = None  # remove batchnorm
             m.forward = m.fuseforward  # update forward
-        if isinstance(m, ResNet):
+        if isinstance(m, ArcFace):
             m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
             m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
             m.bn1 = None  # remove batchnorm
@@ -123,8 +123,8 @@ def fuse_bn_recursively(model):
             fuse_bn_recursively(model._modules[module_name])
     return model
 
-def l2_norm(input,axis=1):
-    return torch.nn.functional.normalize(input, 2, dim=axis)
+def l2_norm(inp, axis=1):
+    return torch.nn.functional.normalize(inp, 2, dim=axis)
 
 class RetinaFace(Module):
     def __init__(self):
@@ -201,17 +201,18 @@ class FaceDetector:
         self.keep_top_k = 750
         self.ref_pts = get_reference_facial_points()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#        self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
         self.model = torch.load(home+"model/RetinaFace.pth", map_location=self.device)
-#        self.model = RetinaFace().to(self.device)
-#        self.model.load_state_dict(torch.load(
-#            home + "model/Resnet50_Final.pth", map_location=self.device
-#        ))
-#        self.model.eval()
-#        self.model = fuse_bn_recursively(self.model)
-#        self.model = fuse(self.model)
-#        self.traced = False
-#        torch.save(self.model, home+"model/RetinaFace.pth")
+        # self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
+        # model = onnx.load("/home/anhman/.homeassistant/model/retinaface.onnx")
+        # self.model = backend.prepare(model, device='CUDA:0')
+        # self.model = RetinaFace().to(self.device)
+        # self.model.load_state_dict(torch.load(
+        #     home + "model/Resnet50_Final.pth", map_location=self.device
+        # ))
+        # self.model.eval()
+        # self.model = fuse_bn_recursively(self.model)
+        # self.model = fuse(self.model)
+        # torch.save(self.model, home+"model/RetinaFace.pth")
 
     def decode(self, loc, priors):
         """Decode locations from predictions using priors to undo
@@ -277,12 +278,13 @@ class FaceDetector:
             landmarks:
                 faces landmarks for each face
         """
+        #loc, conf, landmarks = torch.as_tensor(self.model.run([img])[0], device=self.device)
         with torch.no_grad():
             with torch.cuda.amp.autocast():
-#                if self.traced == False:
-#                   self.model = torch.jit.trace(self.model, (img))
-#                    self.traced = True
-                loc, conf, landmarks = self.model(img)  # forward pass
+       #          if self.traced == False:
+       #             self.model = torch.jit.trace(self.model, (img))
+       #             self.traced = True
+                loc, conf, landmarks = self.model(img)
         boxes = self.decode(loc.data.squeeze(0), priors)
         h, w = img.shape[2], img.shape[3]
         boxes = boxes * torch.as_tensor([w, h, w, h], device=self.device)
@@ -346,40 +348,101 @@ class FaceDetector:
         return warped, scores
 
 
-class Arcface(Module):
-    def __init__(self):
+class ArcFace(Module):
+    """ Resnet101IRSE Backbone"""
+    def __init__(self, layers, use_se=True, im_size=112):
+        block = IRBlock
+        self.inplanes = 64
+        self.use_se = use_se
         super().__init__()
-        blocks = get_blocks(101)
-        self.input_layer = Sequential(
-            Conv2d(3, 64, (3, 3), 1, 1, bias=False), BatchNorm2d(64), PReLU(64)
+        self.conv1 = Conv2d(3, 64, kernel_size=3, stride=1, bias=False)
+        self.bn1 = BatchNorm2d(64)
+        self.prelu = PReLU()
+        self.maxpool = MaxPool2d(kernel_size=2, stride=2)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.bn2 = BatchNorm2d(512)
+        self.dropout = Dropout()
+
+        if im_size == 112:
+            self.fc = Linear(512 * 7 * 7, 512)
+        else:  # 224
+            self.fc = Linear(512 * 14 * 14, 512)
+        self.bn3 = BatchNorm1d(512)
+
+        for m in self.modules():
+            if isinstance(m, Conv2d):
+                init.xavier_normal_(m.weight)
+            elif isinstance(m, (BatchNorm2d, BatchNorm1d)):
+                init.constant_(m.weight, 1)
+                init.constant_(m.bias, 0)
+            elif isinstance(m, Linear):
+                init.xavier_normal_(m.weight)
+                init.constant_(m.bias, 0)
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = Sequential(
+                Conv2d(
+                    self.inplanes,
+                    planes * block.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
+                BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(
+            block(self.inplanes, planes, stride, downsample, use_se=self.use_se)
         )
-        if face_size[0] == 112:
-            self.output_layer = Sequential(BatchNorm2d(512),
-                                           Dropout(0.4),
-                                           Flatten(),
-                                           Linear(512 * 7 * 7, 512),
-                                           BatchNorm1d(512, affine=False))
-        else:
-            self.output_layer = Sequential(BatchNorm2d(512),
-                                           Dropout(0.4),
-                                           Flatten(),
-                                           Linear(512 * 14 * 14, 512),
-                                           BatchNorm1d(512, affine=False))
-        modules = []
-        for block in blocks:
-            for bottleneck in block:
-                modules.append(
-                    bottleneck_IR_SE(
-                        bottleneck.in_channel, bottleneck.depth, bottleneck.stride
-                    )
-                )
-        self.body = Sequential(*modules)
+        self.inplanes = planes
+        for _ in range(1, blocks):
+            layers.append(block(self.inplanes, planes, use_se=self.use_se))
+
+        return Sequential(*layers)
 
     def forward(self, x):
-        x = self.input_layer(x)
-        x = self.body(x)
-        x = self.output_layer(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.prelu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.bn2(x)
+        x = self.dropout(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        x = self.bn3(x)
+
         return l2_norm(x)
+
+    def fuseforward(self, x):
+        x = self.conv1(x)
+        x = self.prelu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.bn2(x)
+        x = self.dropout(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        x = self.bn3(x)
+
+        return l2_norm(x)
+
 
 class FaceEncoder:
 
@@ -387,30 +450,30 @@ class FaceEncoder:
         """ArcFace Recognizer with 5points landmarks."""
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#        self.arcmodel = torch.load(home+"model/ArcFace101.pth", map_location=self.device)
-#        self.arcmodel = TRTModule()
-#        self.arcmodel.load_state_dict(torch.load(home + "model/ArcFacetrt.pth"))
-        #model = onnx.load("/home/anhman/.homeassistant/model/arcfaceresnet100-8.onnx")
-        #self.arcmodel = backend.prepare(model, device='CUDA:0')
-#        self.arcmodel = Arcface().to(self.device)
-#        self.arcmodel.load_state_dict(
-#            torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
-#        )
-#        self.arcmodel.eval()
-#        self.arcmodel = fuse_bn_recursively(self.arcmodel)
+        self.arcmodel = torch.load(home+"model/ArcFace.pth", map_location=self.device)
+        # self.arcmodel = TRTModule()
+        # self.arcmodel.load_state_dict(torch.load(home + "model/ArcFacetrt.pth"))
+        # model = onnx.load("/home/anhman/.homeassistant/model/arcfaceresnet100-8.onnx")
+        # self.arcmodel = backend.prepare(model, device='CUDA:0')
+        # self.arcmodel = Arcface().to(self.device)
+        # self.arcmodel.load_state_dict(
+        #     torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
+        # )
+        # self.arcmodel.eval()
+        # self.arcmodel = fuse_bn_recursively(self.arcmodel)
 
-#        torch.save(self.arcmodel, home+"model/ArcFace.pth")
-#        self.arcmodel = torch.jit.script(self.arcmodel)
-#        self.arcmodel.save(home+"model/ArcfaceJIT.pth")
-        self.arcmodel = ResNet([3, 4, 23, 3]).to(self.device)
-        self.arcmodel.load_state_dict(torch.load(home + "model/insight-face-v3.pt", map_location=self.device))
-#        self.arcmodel = torch.jit.load(home + "model/IR_SE_100_Combined_Epoch_24.pth", map_location=self.device)
-        self.arcmodel.eval()
-        self.arcmodel = fuse_bn_recursively(self.arcmodel)
-        self.arcmodel = fuse(self.arcmodel)
-#        torch.save(self.arcmodel, home+"model/ArcFace101.pth")
+        # torch.save(self.arcmodel, home+"model/ArcFace.pth")
+        # self.arcmodel = torch.jit.script(self.arcmodel)
+        # self.arcmodel.save(home+"model/ArcfaceJIT.pth")
+        # self.arcmodel = ArcFace([3, 4, 23, 3]).to(self.device)
+        # self.arcmodel.load_state_dict(torch.load(home + "model/insight-face-v3.pt", map_location=self.device))
+        # self.arcmodel = torch.jit.load(home + "model/IR_SE_100_Combined_Epoch_24.pth", map_location=self.device)
+        # self.arcmodel.eval()
+        # self.arcmodel = fuse_bn_recursively(self.arcmodel)
+        # self.arcmodel = fuse(self.arcmodel)
+        # torch.save(self.arcmodel, home+"model/ArcFace.pth")
 
     def recog(self, x):
-        #return self.arcmodel.run([x])
+        # return self.arcmodel.run([x])
         with torch.no_grad():
             return self.arcmodel(x)
