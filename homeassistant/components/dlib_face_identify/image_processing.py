@@ -20,7 +20,6 @@ from homeassistant.core import split_entity_id
 
 from .models import FaceDetector, FaceEncoder
 
-
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
 ATTR_NAME = "name"
@@ -100,23 +99,20 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         """Convert cv2/PIL image to tensor."""
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
         img -= torch.as_tensor([104, 117, 123], device=self.device)  # BGR
-        img = img.permute(2, 0, 1).unsqueeze(0)
-        return img
+        return img.permute(2, 0, 1).unsqueeze(0)
 
     def faces_preprocessing(self, faces):
-        """Forward."""
+        """Prepare face tensor."""
         faces = torch.as_tensor(faces, dtype=torch.float32, device=self.device)
-#        norma = trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         norma = trans.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        faces = norma(faces.permute(0, 3, 1, 2).div(255))
-        #faces = np.transpose(faces, (0, 3, 1, 2))
-        return faces
+        # faces = np.transpose(faces, (0, 3, 1, 2))
+        return norma(faces.permute(0, 3, 1, 2).div(255))
 
     def train_faces(self):
         """Train and load faces."""
         try:
             self.targets = torch.load(self.facebank_path / "facebank.pth")
-            #self.targets = np.load(self.facebank_path / "facebank.npy")
+            # self.targets = np.load(self.facebank_path / "facebank.npy")
             self.names = np.load(self.facebank_path / "names.npy")
             _LOGGER.warning("Faces Loaded")
         except Exception:
@@ -139,12 +135,12 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                         )
                     else:
                         _LOGGER.error(person_img + " can't be used for training")
-                #faces.append(embs)
+                # faces.append(embs)
                 faces.append(torch.cat(embs).mean(0, keepdim=True))
                 names.append(person)
             self.targets = torch.cat(faces)
             torch.save(self.targets, str(self.facebank_path) + "/facebank.pth")
-            #np.save(str(self.facebank_path) + "/facebank.pth", self.targets)
+            # np.save(str(self.facebank_path) + "/facebank.pth", self.targets)
             self.names = np.array(names)
             np.save(str(self.facebank_path) + "/names", self.names)
             _LOGGER.warning("Model training completed and saved...")
