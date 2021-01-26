@@ -6,6 +6,7 @@ from torch.nn import (
     BatchNorm2d,
     Conv2d,
     LeakyReLU,
+    Linear,
     MaxPool2d,
     Module,
     PReLU,
@@ -14,6 +15,7 @@ from torch.nn import (
     Sigmoid,
 )
 from torch.nn.functional import interpolate, relu
+
 
 # flake8: noqa
 
@@ -123,74 +125,154 @@ class LandmarkHead(Module):
 #  Original Arcface Model ######################################
 
 
-class Flatten(Module):
-    def forward(self, inpt):
-        return inpt.view(inpt.size(0), -1)
+def conv3x3(in_planes, out_planes, stride=1):
+    """3x3 convolution with padding"""
+    return Conv2d(
+        in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False
+    )
 
 
-class SEModule(Module):
-    def __init__(self, channels, reduction):
+class BasicBlock(Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super().__init__()
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = BatchNorm2d(planes)
+        self.relu = ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = BatchNorm2d(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+class Bottleneck(Module):
+    expansion = 4
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super().__init__()
+        self.conv1 = Conv2d(inplanes, planes, kernel_size=1, bias=False)
+        self.bn1 = BatchNorm2d(planes)
+        self.conv2 = Conv2d(
+            planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
+        self.bn2 = BatchNorm2d(planes)
+        self.conv3 = Conv2d(planes, planes * 4, kernel_size=1, bias=False)
+        self.bn3 = BatchNorm2d(planes * 4)
+        self.relu = ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+class SEBlock(Module):
+    def __init__(self, channel, reduction=16):
         super().__init__()
         self.avg_pool = AdaptiveAvgPool2d(1)
-        self.fc1 = Conv2d(
-            channels, channels // reduction, kernel_size=1, padding=0, bias=False
+        self.fc = Sequential(
+            Linear(channel, channel // reduction),
+            PReLU(),
+            Linear(channel // reduction, channel),
+            Sigmoid(),
         )
-        self.relu = ReLU(inplace=True)
-        self.fc2 = Conv2d(
-            channels // reduction, channels, kernel_size=1, padding=0, bias=False
-        )
-        self.sigmoid = Sigmoid()
 
     def forward(self, x):
-        module_input = x
-        x = self.avg_pool(x)
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        x = self.sigmoid(x)
-        return module_input * x
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y
 
 
-class bottleneck_IR_SE(Module):
-    def __init__(self, in_channel, depth, stride):
+class IRBlock(Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None, use_se=True):
         super().__init__()
-        if in_channel == depth:
-            self.shortcut_layer = MaxPool2d(1, stride)
-        else:
-            self.shortcut_layer = Sequential(
-                Conv2d(in_channel, depth, (1, 1), stride, bias=False),
-                BatchNorm2d(depth),
-            )
-        self.res_layer = Sequential(
-            BatchNorm2d(in_channel),
-            Conv2d(in_channel, depth, (3, 3), (1, 1), 1, bias=False),
-            PReLU(depth),
-            Conv2d(depth, depth, (3, 3), stride, 1, bias=False),
-            BatchNorm2d(depth),
-            SEModule(depth, 16),
-        )
+        self.bn0 = BatchNorm2d(inplanes)
+        self.conv1 = conv3x3(inplanes, inplanes)
+        self.bn1 = BatchNorm2d(inplanes)
+        self.prelu = PReLU()
+        self.conv2 = conv3x3(inplanes, planes, stride)
+        self.bn2 = BatchNorm2d(planes)
+        self.downsample = downsample
+        self.stride = stride
+        self.use_se = use_se
+        if self.use_se:
+            self.se = SEBlock(planes)
 
     def forward(self, x):
-        shortcut = self.shortcut_layer(x)
-        res = self.res_layer(x)
-        return res + shortcut
+        residual = x
+        out = self.bn0(x)
+        out = self.conv1(out)
+        out = self.bn1(out)
+        out = self.prelu(out)
 
+        out = self.conv2(out)
+        out = self.bn2(out)
+        if self.use_se:
+            out = self.se(out)
 
-class Bottleneck(namedtuple("Block", ["in_channel", "depth", "stride"])):
-    """A named tuple describing a ResNet block."""
+        if self.downsample is not None:
+            residual = self.downsample(x)
 
+        out += residual
+        out = self.prelu(out)
 
-def get_block(in_channel, depth, num_units, stride=2):
-    return [Bottleneck(in_channel, depth, stride)] + [
-        Bottleneck(depth, depth, 1) for i in range(num_units - 1)
-    ]
+        return out
 
+    def fuseforward(self, x):
+        residual = x
+        out = self.bn0(x)
+        out = self.conv1(out)
+        out = self.prelu(out)
 
-def get_blocks(num_layers):
-    blocks = [
-        get_block(in_channel=64, depth=64, num_units=3),
-        get_block(in_channel=64, depth=128, num_units=4),
-        get_block(in_channel=128, depth=256, num_units=14),
-        get_block(in_channel=256, depth=512, num_units=3),
-    ]
-    return blocks
+        out = self.conv2(out)
+        if self.use_se:
+            out = self.se(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.prelu(out)
+
+        return out
