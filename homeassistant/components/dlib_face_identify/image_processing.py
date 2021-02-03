@@ -8,7 +8,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-from torchvision import transforms as trans
 
 from homeassistant.components.image_processing import (
     CONF_ENTITY_ID,
@@ -18,7 +17,7 @@ from homeassistant.components.image_processing import (
 )
 from homeassistant.core import split_entity_id
 
-from .models import FaceDetector, FaceEncoder
+from .models import FaceDetector
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
@@ -26,7 +25,7 @@ ATTR_NAME = "name"
 ATTR_FACES = "faces"
 ATTR_TOTAL_FACES = "total_faces"
 ATTR_MOTION = "detection"
-
+# torch.backends.cudnn.benchmark = True
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Dlib Face detection platform."""
@@ -53,7 +52,6 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
         self.threshold = 1
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.face_detector = FaceDetector()
-        self.face_recog = FaceEncoder()
         self._camera = camera_entity
         if name:
             self._name = name
@@ -94,19 +92,13 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def preprocessor(self, img_raw):
         """Convert cv2/PIL image to tensor."""
-        #img_raw = np.array(img_raw)
-        #img_raw = img_raw - [104.0, 117.0, 123.0]
-        #img = np.transpose(img_raw, (2,0,1))
+        #img_raw = np.float32(img_raw)
+        #img_raw -= [104.0, 117.0, 123.0]
+        #img = img_raw.transpose(2,0,1)
         #return img[np.newaxis, ...].astype('float32')
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
         img -= torch.as_tensor([104, 117, 123], device=self.device)  # BGR
         return img.permute(2, 0, 1).unsqueeze(0)
-
-    def faces_preprocessing(self, faces):
-        """Prepare face tensor."""
-        faces = torch.as_tensor(faces, dtype=torch.float32, device=self.device)
-        norma = trans.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        return norma(faces.permute(0, 3, 1, 2).div(255))
 
     def train_faces(self):
         """Train and load faces."""
@@ -128,11 +120,9 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     pic = cv2.imread(folder + person + "/" + person_img)
                     img = self.preprocessor(pic)
                     priors = self.prior_box(img.shape[2:])
-                    face = self.face_detector.detect_align(pic, img, priors)[0]
+                    emb = self.face_detector.detect_align(pic, img, priors)[0]
                     if len(face) == 1:
-                        embs.append(
-                            self.face_recog.recog(self.faces_preprocessing(face))
-                        )
+                        embs.append(emb)
                     else:
                         _LOGGER.error(person_img + " can't be used for training")
                 # faces.append(embs)
@@ -166,19 +156,17 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def process_image(self, image):
         """Process image."""
-        scores = []
         found = []
         if self._det == "on":
             img = self.preprocessor(image)
             if len(self.priors) < 1:
                 self.priors = self.prior_box(img.shape[2:])
-            faces, scores = self.face_detector.detect_align(image, img, self.priors)
-            if len(scores) > 0:
-                embs = self.face_recog.recog(self.faces_preprocessing(faces))
+            embs = self.face_detector.detect_align(image, img, self.priors)
+            if len(embs) > 0:
                 diff = embs.unsqueeze(-1) - self.targets.transpose(1, 0).unsqueeze(0)
                 dist = torch.sum(torch.pow(diff, 2), dim=1)
                 minimum, min_idx = torch.min(dist, dim=1)
                 min_idx[minimum > self.threshold] = -1  # if no match
-                for idx, _ in enumerate(scores):
+                for idx, _ in enumerate(embs):
                     found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
-        self.process_faces(found, len(scores))
+        self.process_faces(found, len(found))
