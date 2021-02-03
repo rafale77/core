@@ -1,47 +1,18 @@
 import logging
 from pathlib import Path
+from typing import List, Tuple
 
 import cv2
 import numpy as np
-
-import onnx
-import onnx_tensorrt.backend as backend
 from skimage.transform import SimilarityTransform
 import torch
-from torch.nn import (
-    BatchNorm1d,
-    BatchNorm2d,
-    Conv2d,
-    Dropout,
-    Identity,
-    Linear,
-    MaxPool2d,
-    Module,
-    ModuleList,
-    PReLU,
-    ReLU,
-    Sequential,
-    init,
-)
-from torch.nn.functional import softmax
-import torchvision.models as models
-
-# from torch2trt import TRTModule
-from .net import (
-    FPN,
-    SSH,
-    BboxHead,
-    ClassHead,
-    IRBlock,
-    LandmarkHead,
-)
+from torchvision.transforms.functional import normalize
 
 # flake8: noqa
 
 
-Bottleneck = models.resnet.Bottleneck
-IntermediateLayerGetter = models._utils.IntermediateLayerGetter
 _LOGGER = logging.getLogger(__name__)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 home = str(Path.home()) + "/.homeassistant/"
 DEFAULT_CROP_SIZE = (96, 112)
 REFERENCE_FACIAL_POINTS = [
@@ -52,7 +23,6 @@ REFERENCE_FACIAL_POINTS = [
     [62.72990036, 87],
 ]
 face_size = (112, 112)
-variances = [0.1, 0.2]
 trans = SimilarityTransform()
 
 
@@ -65,257 +35,117 @@ def get_reference_facial_points():
     return tmp_5pts
 
 
-def fuse(model):  # fuse model Conv2d() + BatchNorm2d() layers
-    for m in model.modules():
-        if isinstance(m, Bottleneck):
-            m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
-            m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
-            m.bn1 = Identity()  # remove batchnorm
-            m.conv2 = torch.nn.utils.fuse_conv_bn_eval(m.conv2, m.bn2)
-            m.bn2 = Identity()  # remove batchnorm
-            m.conv3 = torch.nn.utils.fuse_conv_bn_eval(m.conv3, m.bn3)
-            m.bn3 = Identity()  # remove batchnorm
-            #m.forward = m.fuseforward  # update forward
-        if isinstance(m, IntermediateLayerGetter):
-            m._non_persistent_buffers_set = set()
-            m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
-            m.bn1 = Identity()  # remove batchnorm
-        if isinstance(m, IRBlock):
-            m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
-            m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
-            m.bn1 = None  # remove batchnorm
-            m.conv2 = torch.nn.utils.fuse_conv_bn_eval(m.conv2, m.bn2)
-            m.bn2 = None  # remove batchnorm
-            m.forward = m.fuseforward  # update forward
-        if isinstance(m, ArcFace):
-            m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
-            m.conv1 = torch.nn.utils.fuse_conv_bn_eval(m.conv1, m.bn1)
-            m.bn1 = None  # remove batchnorm
-            m.forward = m.fuseforward  # update forward
-    return model
+@torch.jit.script
+def l2_norm(inp):
+    return torch.nn.functional.normalize(inp, 2.0, 1)
 
 
-def fuse_bn_sequential(block):
+def faces_preprocessing(faces):
+    """Prepare face tensor."""
+    dev = torch.device("cuda:0")
+    faces = torch.as_tensor(faces, dtype=torch.float32, device=dev).permute(0, 3, 1, 2).div(255)
+    return normalize(faces, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225], inplace=True)
+
+
+@torch.jit.script
+def decode_landmark(pre, priors, variances: List[float]):
+    """Decode landm from predictions using priors to undo
+    the encoding we did for offset regression at train time.
+    Args:
+        pre (tensor): landm predictions for loc layers,
+            Shape: [num_priors,10]
+        priors (tensor): Prior boxes in center-offset form.
+            Shape: [num_priors,4].
+        variances: (list[float]) Variances of priorboxes
+    Return:
+        decoded landm predictions
     """
-    This function takes a sequential block and fuses the batch normalization with convolution
-    :param model: nn.Sequential. Source resnet model
-    :return: nn.Sequential. Converted block
+    landms = torch.cat(
+        (
+            priors[:, :2] + pre[:, :2] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 2:4] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 4:6] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 6:8] * variances[0] * priors[:, 2:],
+            priors[:, :2] + pre[:, 8:10] * variances[0] * priors[:, 2:],
+        ),
+        dim=1,
+    )
+    return landms
+
+
+@torch.jit.script
+def decode(loc, priors, variances: List[float]):
+    """Decode locations from predictions using priors to undo
+    the encoding we did for offset regression at train time.
+    Args:
+        loc (tensor): location predictions for loc layers,
+            Shape: [num_priors,4]
+        priors (tensor): Prior boxes in center-offset form.
+            Shape: [num_priors,4].
+        variances: (list[float]) Variances of priorboxes
+    Return:
+        decoded bounding box predictions
     """
-    if not isinstance(block, Sequential):
-        return block
-    stack = []
-    for m in block.children():
-        if len(stack) == 0:
-            stack.append(m)
-        elif isinstance(m, BatchNorm2d) and isinstance(stack[-1], Conv2d):
-            stack[-1] = torch.nn.utils.fuse_conv_bn_eval(stack[-1], m)
-        else:
-            stack.append(m)
-    if len(stack) > 1:
-        return Sequential(*stack)
-    return stack[0]
+    boxes = torch.cat(
+        (
+            priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
+            priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1]),
+        ),
+        1,
+    )
+    boxes[:, :2] -= boxes[:, 2:] / 2
+    boxes[:, 2:] += boxes[:, :2]
+    return boxes
 
 
-def fuse_bn_recursively(model):
-    for module_name in model._modules:
-        model._modules[module_name] = fuse_bn_sequential(model._modules[module_name])
-        if len(model._modules[module_name]._modules) > 0:
-            fuse_bn_recursively(model._modules[module_name])
-    return model
+@torch.jit.script
+def postprocess(input: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], img, priors):
+    """Decode-NMS to landmarks."""
+    dev = torch.device("cuda:0")
+    thresh = 0.99
+    top_k = 5000
+    nms_thresh = 0.4
+    keep_top_k = 750
+    variances = [0.1, 0.2]
 
-def l2_norm(inp, axis=1):
-    return torch.nn.functional.normalize(inp, 2, dim=axis)
+    # ignore low scores
+    scores = input[1].squeeze(0)
+    index = torch.where(scores > thresh)[0]
+    if len(index) > 0:
+        h, w = img.shape[2], img.shape[3]
+        landmarks = decode_landmark(input[2].squeeze(0), priors, variances)
+        landmarks *= torch.as_tensor([w, h, w, h, w, h, w, h, w, h], device=dev)
+        landmarks = landmarks[index]
+        if len(index) == 1:
+            return landmarks.reshape(-1, 5, 2)
 
-class RetinaFace(Module):
-    def __init__(self):
-        """Define Retina Module."""
-        super().__init__()
+        boxes = decode(input[0].data.squeeze(0), priors, variances)
+        boxes *= torch.as_tensor([w, h, w, h], device=dev)
 
-        return_layers = {"layer2": 1, "layer3": 2, "layer4": 3}
+        boxes = boxes[index]
+        scores = scores[index]
 
-        self.body = models._utils.IntermediateLayerGetter(
-            models.resnet50(pretrained=True), return_layers
-        )
-        self.fpn = FPN()
-        self.ssh1 = SSH()
-        self.ssh2 = SSH()
-        self.ssh3 = SSH()
-        self.ClassHead = self._make_class_head()
-        self.BboxHead = self._make_bbox_head()
-        self.LandmarkHead = self._make_landmark_head()
+        # keep top-K before NMS
+        order = scores.argsort(dim=0, descending=True)[: top_k]
+        boxes = boxes[order]
+        landmarks = landmarks[order]
+        scores = scores[order]
 
-    def _make_class_head(self):
-        classhead = ModuleList()
-        for _ in range(3):
-            classhead.append(ClassHead())
-        return classhead
+        # Do NMS
+        keep = torch.ops.torchvision.nms(boxes, scores, nms_thresh)
+        landmarks = landmarks[keep, :].reshape(-1, 5, 2)
 
-    def _make_bbox_head(self):
-        bboxhead = ModuleList()
-        for _ in range(3):
-            bboxhead.append(BboxHead())
-        return bboxhead
-
-    def _make_landmark_head(self):
-        landmarkhead = ModuleList()
-        for _ in range(3):
-            landmarkhead.append(LandmarkHead())
-        return landmarkhead
-
-    def forward(self, inputs):
-        out = self.body(inputs)
-
-        # FPN
-        fpn = self.fpn(out)
-
-        # SSH
-        feature1 = self.ssh1(fpn[0])
-        feature2 = self.ssh2(fpn[1])
-        feature3 = self.ssh3(fpn[2])
-        features = [feature1, feature2, feature3]
-
-        bbox_regressions = torch.cat(
-            [self.BboxHead[i](feature) for i, feature in enumerate(features)], dim=1
-        )
-        classifications = torch.cat(
-            [self.ClassHead[i](feature) for i, feature in enumerate(features)], dim=1
-        )
-        ldm_regressions = torch.cat(
-            [self.LandmarkHead[i](feature) for i, feature in enumerate(features)], dim=1
-        )
-        output = (
-            bbox_regressions,
-            softmax(classifications, dim=-1).select(2, 1),
-            ldm_regressions,
-        )
-        return output
+        # # keep top-K faster NMS
+        return landmarks[: keep_top_k, :]
 
 
 class FaceDetector:
     def __init__(self):
         """RetinaFace Detector with 5points landmarks."""
 
-        self.thresh = 0.99
-        self.top_k = 5000
-        self.nms_thresh = 0.4
-        self.keep_top_k = 750
         self.ref_pts = get_reference_facial_points()
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.model = torch.load(home+"model/RetinaFace.pth", map_location=self.device)
-        # self.model = torch.jit.load(home+"model/RetinaJIT.pth", map_location=self.device)
-        # model = onnx.load("/home/anhman/.homeassistant/model/retinaface.onnx")
-        # self.model = backend.prepare(model, device='CUDA:0')
-        # self.model = RetinaFace().to(self.device)
-        # self.model.load_state_dict(torch.load(
-        #     home + "model/Resnet50_Final.pth", map_location=self.device
-        # ))
-        # self.model.eval()
-        # self.model = fuse_bn_recursively(self.model)
-        # self.model = fuse(self.model)
-        # torch.save(self.model, home+"model/RetinaFace.pth")
-
-    def decode(self, loc, priors):
-        """Decode locations from predictions using priors to undo
-        the encoding we did for offset regression at train time.
-        Args:
-            loc (tensor): location predictions for loc layers,
-                Shape: [num_priors,4]
-            priors (tensor): Prior boxes in center-offset form.
-                Shape: [num_priors,4].
-            variances: (list[float]) Variances of priorboxes
-        Return:
-            decoded bounding box predictions
-        """
-
-        boxes = torch.cat(
-            (
-                priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
-                priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1]),
-            ),
-            1,
-        )
-        boxes[:, :2] -= boxes[:, 2:] / 2
-        boxes[:, 2:] += boxes[:, :2]
-        return boxes
-
-    def decode_landmark(self, pre, priors):
-        """Decode landm from predictions using priors to undo
-        the encoding we did for offset regression at train time.
-        Args:
-            pre (tensor): landm predictions for loc layers,
-                Shape: [num_priors,10]
-            priors (tensor): Prior boxes in center-offset form.
-                Shape: [num_priors,4].
-            variances: (list[float]) Variances of priorboxes
-        Return:
-            decoded landm predictions
-        """
-        landms = torch.cat(
-            (
-                priors[:, :2] + pre[:, :2] * variances[0] * priors[:, 2:],
-                priors[:, :2] + pre[:, 2:4] * variances[0] * priors[:, 2:],
-                priors[:, :2] + pre[:, 4:6] * variances[0] * priors[:, 2:],
-                priors[:, :2] + pre[:, 6:8] * variances[0] * priors[:, 2:],
-                priors[:, :2] + pre[:, 8:10] * variances[0] * priors[:, 2:],
-            ),
-            dim=1,
-        )
-        return landms
-
-    def detect_faces(self, img, priors):
-        """
-        get a image from ndarray, detect faces in image
-        Args:
-            img_raw: original image from cv2(BGR) or PIL(RGB)
-        Notes:
-            coordinate is corresponding to original image
-            and type of return image is corresponding to input(cv2, PIL)
-        Returns:
-            boxes:
-                faces bounding box for each face
-            scores:
-                percentage of each face
-            landmarks:
-                faces landmarks for each face
-        """
-        #loc, conf, landmarks = torch.as_tensor(self.model.run([img])[0], device=self.device)
-        with torch.no_grad():
-            with torch.cuda.amp.autocast():
-       #          if self.traced == False:
-       #             self.model = torch.jit.trace(self.model, (img))
-       #             self.traced = True
-                loc, conf, landmarks = self.model(img)
-        boxes = self.decode(loc.data.squeeze(0), priors)
-        h, w = img.shape[2], img.shape[3]
-        boxes = boxes * torch.as_tensor([w, h, w, h], device=self.device)
-        scores = conf.squeeze(0)
-        landmarks = self.decode_landmark(landmarks.squeeze(0), priors)
-        landmarks = landmarks * torch.as_tensor(
-            [w, h, w, h, w, h, w, h, w, h], device=self.device
-        )
-
-        # ignore low scores
-        index = torch.where(scores > self.thresh)[0]
-        boxes = boxes[index]
-        landmarks = landmarks[index]
-        scores = scores[index]
-
-        # keep top-K before NMS
-        order = scores.argsort(dim=0, descending=True)[: self.top_k]
-        boxes = boxes[order]
-        landmarks = landmarks[order]
-        scores = scores[order]
-
-        # Do NMS
-        keep = torch.ops.torchvision.nms(boxes, scores, self.nms_thresh)
-        scores = scores[:, None][keep, :]
-        landmarks = landmarks[keep, :].reshape(-1, 5, 2)
-
-        # # keep top-K faster NMS
-        landmarks = landmarks[: self.keep_top_k, :]
-        scores = scores[: self.keep_top_k, :]
-
-        return scores, landmarks
+        self.model = torch.jit.load(home + "model/RetinaFaceJIT.pth", map_location=device)
+        self.arcmodel = torch.jit.load(home + "model/epoch_16_7.pth", map_location=device)
 
     def detect_align(self, image, img, priors):
         """
@@ -324,156 +154,33 @@ class FaceDetector:
         Args:
             image: original image from cv2(BGR) or PIL(RGB)
             img: tensorized image
+            priors: tensorized anchors
         Returns:
-            faces:
-                cv2 image(n, 112, 112, 3) tuple of faces that aligned
-            scores:
+            embeddings: tensor
         """
-        scores, landmarks = self.detect_faces(img, priors)
-        warped = []
-        for src_pts in landmarks:
-            if max(src_pts.shape) < 3 or min(src_pts.shape) != 2:
-                raise _LOGGER.warning(
-                    "RetinaFace facial_pts.shape must be (K,2) or (2,K) and K>2"
-                )
-            if src_pts.shape[0] == 2:
-                src_pts = src_pts.T
-            if src_pts.shape != self.ref_pts.shape:
-                raise _LOGGER.warning(
-                    "RetinaFace facial_pts and reference_pts must have the same shape"
-                )
-            trans.estimate(src_pts.cpu().numpy(), self.ref_pts)
-            face_img = cv2.warpAffine(image, trans.params[0:2, :], face_size)
-            warped.append(face_img)
-        return warped, scores
-
-
-class ArcFace(Module):
-    """ Resnet101IRSE Backbone"""
-    def __init__(self, layers, use_se=True, im_size=112):
-        block = IRBlock
-        self.inplanes = 64
-        self.use_se = use_se
-        super().__init__()
-        self.conv1 = Conv2d(3, 64, kernel_size=3, stride=1, bias=False)
-        self.bn1 = BatchNorm2d(64)
-        self.prelu = PReLU()
-        self.maxpool = MaxPool2d(kernel_size=2, stride=2)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.bn2 = BatchNorm2d(512)
-        self.dropout = Dropout()
-
-        if im_size == 112:
-            self.fc = Linear(512 * 7 * 7, 512)
-        else:  # 224
-            self.fc = Linear(512 * 14 * 14, 512)
-        self.bn3 = BatchNorm1d(512)
-
-        for m in self.modules():
-            if isinstance(m, Conv2d):
-                init.xavier_normal_(m.weight)
-            elif isinstance(m, (BatchNorm2d, BatchNorm1d)):
-                init.constant_(m.weight, 1)
-                init.constant_(m.bias, 0)
-            elif isinstance(m, Linear):
-                init.xavier_normal_(m.weight)
-                init.constant_(m.bias, 0)
-
-    def _make_layer(self, block, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = Sequential(
-                Conv2d(
-                    self.inplanes,
-                    planes * block.expansion,
-                    kernel_size=1,
-                    stride=stride,
-                    bias=False,
-                ),
-                BatchNorm2d(planes * block.expansion),
-            )
-
-        layers = []
-        layers.append(
-            block(self.inplanes, planes, stride, downsample, use_se=self.use_se)
-        )
-        self.inplanes = planes
-        for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, use_se=self.use_se))
-
-        return Sequential(*layers)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.prelu(x)
-        x = self.maxpool(x)
-
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        x = self.bn2(x)
-        x = self.dropout(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        x = self.bn3(x)
-
-        return l2_norm(x)
-
-    def fuseforward(self, x):
-        x = self.conv1(x)
-        x = self.prelu(x)
-        x = self.maxpool(x)
-
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        x = self.bn2(x)
-        x = self.dropout(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        x = self.bn3(x)
-
-        return l2_norm(x)
-
-
-class FaceEncoder:
-
-    def __init__(self):
-        """ArcFace Recognizer with 5points landmarks."""
-
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.arcmodel = torch.load(home+"model/ArcFace.pth", map_location=self.device)
-        # self.arcmodel = TRTModule()
-        # self.arcmodel.load_state_dict(torch.load(home + "model/ArcFacetrt.pth"))
-        # model = onnx.load("/home/anhman/.homeassistant/model/arcfaceresnet100-8.onnx")
-        # self.arcmodel = backend.prepare(model, device='CUDA:0')
-        # self.arcmodel = Arcface().to(self.device)
-        # self.arcmodel.load_state_dict(
-        #     torch.load(home + "model/model_ir_se50.pth", map_location=self.device)
-        # )
-        # self.arcmodel.eval()
-        # self.arcmodel = fuse_bn_recursively(self.arcmodel)
-
-        # torch.save(self.arcmodel, home+"model/ArcFace.pth")
-        # self.arcmodel = torch.jit.script(self.arcmodel)
-        # self.arcmodel.save(home+"model/ArcfaceJIT.pth")
-        # self.arcmodel = ArcFace([3, 4, 23, 3]).to(self.device)
-        # self.arcmodel.load_state_dict(torch.load(home + "model/insight-face-v3.pt", map_location=self.device))
-        # self.arcmodel = torch.jit.load(home + "model/IR_SE_100_Combined_Epoch_24.pth", map_location=self.device)
-        # self.arcmodel.eval()
-        # self.arcmodel = fuse_bn_recursively(self.arcmodel)
-        # self.arcmodel = fuse(self.arcmodel)
-        # torch.save(self.arcmodel, home+"model/ArcFace.pth")
-
-    def recog(self, x):
-        # return self.arcmodel.run([x])
+        landmarks = []
+        embs = []
         with torch.no_grad():
-            return self.arcmodel(x)
+            with torch.cuda.amp.autocast():
+                output = self.model(img)
+        if len(output[2]) > 0:
+            landmarks = postprocess(output, img, priors)
+        if isinstance(landmarks, torch.Tensor):
+            warped =[]
+            for src_pts in landmarks:
+                if max(src_pts.shape) < 3 or min(src_pts.shape) != 2:
+                    raise _LOGGER.warning(
+                        "RetinaFace facial_pts.shape must be (K,2) or (2,K) and K>2"
+                    )
+                if src_pts.shape[0] == 2:
+                    src_pts = src_pts.T
+                if src_pts.shape != self.ref_pts.shape:
+                    raise _LOGGER.warning(
+                        "RetinaFace facial_pts and reference_pts must have the same shape"
+                    )
+                trans.estimate(src_pts.cpu().numpy(), self.ref_pts)
+                face_img = cv2.warpAffine(image, trans.params[0:2, :], face_size)
+                warped.append(face_img)
+            with torch.no_grad():
+                embs = l2_norm(self.arcmodel(faces_preprocessing(warped)))
+        return embs
