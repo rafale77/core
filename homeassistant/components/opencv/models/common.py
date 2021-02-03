@@ -1,5 +1,6 @@
 from mish_cuda import MishCuda as Mish
-from torch import cat
+from typing import List
+from torch import cat, Tensor
 from torch.nn import (
     BatchNorm2d,
     Conv2d,
@@ -121,9 +122,15 @@ class SPPCSP(Module):
 
 class Concat(Module):
     # Concatenate a list of tensors along dimension
-    def __init__(self, dimension=1):
+    def __init__(self, dimension: int = 1):
         super().__init__()
         self.d = dimension
 
-    def forward(self, x):
-        return cat(x, self.d)
+    # torchscript does not yet support *args, so we overload method
+    # allowing it to take either a List[Tensor] or single Tensor
+    def forward(self, x: List[Tensor]) -> Tensor:
+        if isinstance(x, Tensor):
+            prev_features = [x]
+        else:
+            prev_features = x
+        return cat(prev_features, self.d)
