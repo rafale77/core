@@ -15,6 +15,7 @@ from torch.nn import (
     ReLU,
     ReLU6,
     Sequential,
+    SyncBatchNorm
 )
 import yaml  # for torch hub
 
@@ -25,11 +26,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 dtype = torch.float16
 
 # flake8: noqa
-
-
-def make_divisible(x, divisor):
-    # Returns x evenly divisble by divisor
-    return math.ceil(x / divisor) * divisor
 
 
 def check_anchor_order(m):
@@ -126,11 +122,10 @@ class Detect(Module):
             ]  # xy
             y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
             z.append(y.view(bs, -1, self.no))
-
         return (torch.cat(z, 1), x)
 
     @staticmethod
-    def _make_grid(nx=20, ny=20):
+    def _make_grid(nx: int=20, ny: int=20):
         yv, xv = torch.meshgrid([torch.arange(ny), torch.arange(nx)])
         return torch.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).to(device)
 
@@ -200,15 +195,6 @@ class Model(Module):
             )  # cls
             mi.bias = Parameter(b.view(-1), requires_grad=True)
 
-    def _print_biases(self):
-        m = self.model[-1]  # Detect() module
-        for mi in m.m:  # from
-            b = mi.bias.detach().view(m.na, -1).T  # conv.bias(255) to (3,85)
-            _LOGGER.warning(
-                ("%6g Conv2d.bias:" + "%10.3g" * 6)
-                % (mi.weight.shape[1], *b[:5].mean(1).tolist(), b[5:].mean())
-            )
-
     def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
         _LOGGER.warning("Fusing layers... ")
         for m in self.model.modules():
@@ -260,12 +246,13 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             SPPCSP,
         ]:
             c1, c2 = ch[f], args[0]
-            c2 = make_divisible(c2 * gw, 8) if c2 != no else c2
+            c2 = math.ceil(c2 * gw / 8) * 8 if c2 != no else c2
+
             args = [c1, c2, *args[1:]]
             if m in [BottleneckCSP, BottleneckCSP2, SPPCSP]:
                 args.insert(2, n)
                 n = 1
-        elif m is BatchNorm2d:
+        elif m in [BatchNorm2d, SyncBatchNorm]:
             args = [ch[f]]
         elif m is Concat:
             c2 = sum([ch[-1 if x == -1 else x + 1] for x in f])
