@@ -46,10 +46,13 @@ async def test_subscribing_config_topic(hass, mqtt_mock):
     discovery_topic = "homeassistant"
     await async_start(hass, discovery_topic, entry)
 
-    assert mqtt_mock.async_subscribe.called
-    call_args = mqtt_mock.async_subscribe.mock_calls[0][1]
-    assert call_args[0] == discovery_topic + "/#"
-    assert call_args[2] == 0
+    call_args1 = mqtt_mock.async_subscribe.mock_calls[0][1]
+    assert call_args1[2] == 0
+    call_args2 = mqtt_mock.async_subscribe.mock_calls[1][1]
+    assert call_args2[2] == 0
+    topics = [call_args1[0], call_args2[0]]
+    assert discovery_topic + "/+/+/config" in topics
+    assert discovery_topic + "/+/+/+/config" in topics
 
 
 async def test_invalid_topic(hass, mqtt_mock):
@@ -398,7 +401,7 @@ async def test_cleanup_device(hass, device_reg, entity_reg, mqtt_mock):
     await hass.async_block_till_done()
 
     # Verify device and registry entries are created
-    device_entry = device_reg.async_get_device({("mqtt", "0AFFD2")}, set())
+    device_entry = device_reg.async_get_device({("mqtt", "0AFFD2")})
     assert device_entry is not None
     entity_entry = entity_reg.async_get("sensor.mqtt_sensor")
     assert entity_entry is not None
@@ -410,7 +413,7 @@ async def test_cleanup_device(hass, device_reg, entity_reg, mqtt_mock):
     await hass.async_block_till_done()
 
     # Verify device and registry entries are cleared
-    device_entry = device_reg.async_get_device({("mqtt", "0AFFD2")}, set())
+    device_entry = device_reg.async_get_device({("mqtt", "0AFFD2")})
     assert device_entry is None
     entity_entry = entity_reg.async_get("sensor.mqtt_sensor")
     assert entity_entry is None
