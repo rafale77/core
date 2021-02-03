@@ -26,16 +26,17 @@ ATTR_TOTAL_MATCHES = "total_matches"
 ATTR_MOTION = "detection"
 CONF_CLASSIFIER = "classifier"
 CONFIDENCE_THRESHOLD = 0.5
-NMS_THRESHOLD = 0.4
+NMS_THRESHOLD = 0.6
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-imgsize = int(704)
+imgsize = int(896)
 torch.set_num_threads(1)
+# torch.backends.cudnn.benchmark = True
 sys.path.insert(
     0,
     str(Path.home())
     + "/.local/lib/python3.8/site-packages/homeassistant/components/opencv/",
 )
-model = torch.load(home + "yolov4-p5.pt", device)["model"].eval.fuse().half()
+model = torch.load(home + "yolov4-p5.pt", device)["model"].eval().fuse().half()
 with open(home + "cococlasses.txt") as f:
     class_names = [cname.strip() for cname in f.readlines()]
 
@@ -60,8 +61,8 @@ def xywh2xyxy(x):
 def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None):
     """Return detection with shape: nx6 (x1, y1, x2, y2, conf, cls)."""
 
-    if prediction.dtype is torch.float16:
-        prediction = prediction.float()  # to FP32
+#    if prediction.dtype is torch.float16:
+#        prediction = prediction.float()  # to FP32
     nc = prediction[0].shape[1] - 5  # number of classes
     xc = prediction[..., 4] > conf_thres  # candidates
 
@@ -108,7 +109,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None)
         if not n:
             continue
 
-        # Batched NMS
+        # NMS
         c = x[:, 5:6] * max_wh  # classes
         boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
         i = torch.ops.torchvision.nms(boxes, scores, iou_thres)
