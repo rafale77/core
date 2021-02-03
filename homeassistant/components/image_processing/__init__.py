@@ -5,7 +5,7 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME, CONF_ENTITY_ID, CONF_NAME
+from homeassistant.const import ATTR_NAME, CONF_ENTITY_ID, CONF_NAME
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
@@ -269,8 +269,6 @@ class ImageProcessingFaceEntity(ImageProcessingEntity):
             if ATTR_CONFIDENCE in face and self.confidence:
                 if face[ATTR_CONFIDENCE] < self.confidence:
                     continue
-
-        #    face.update({ATTR_ENTITY_ID: self.entity_id})
             self.hass.async_add_job(self.hass.bus.async_fire, EVENT_DETECT_FACE, face)
 
         # Update entity store
