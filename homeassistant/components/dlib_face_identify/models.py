@@ -43,7 +43,11 @@ def l2_norm(inp):
 def faces_preprocessing(faces):
     """Prepare face tensor."""
     dev = torch.device("cuda:0")
-    faces = torch.as_tensor(faces, dtype=torch.float32, device=dev).permute(0, 3, 1, 2).div(255)
+    faces = (
+        torch.as_tensor(faces, dtype=torch.float32, device=dev)
+        .permute(0, 3, 1, 2)
+        .div(255)
+    )
     return normalize(faces, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225], inplace=True)
 
 
@@ -126,7 +130,7 @@ def postprocess(input: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], img, pri
         scores = scores[index]
 
         # keep top-K before NMS
-        order = scores.argsort(dim=0, descending=True)[: top_k]
+        order = scores.argsort(dim=0, descending=True)[:top_k]
         boxes = boxes[order]
         landmarks = landmarks[order]
         scores = scores[order]
@@ -136,7 +140,7 @@ def postprocess(input: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], img, pri
         landmarks = landmarks[keep, :].reshape(-1, 5, 2)
 
         # # keep top-K faster NMS
-        return landmarks[: keep_top_k, :]
+        return landmarks[:keep_top_k, :]
 
 
 class FaceDetector:
