@@ -92,10 +92,10 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def preprocessor(self, img_raw):
         """Convert cv2/PIL image to tensor."""
-        #img_raw = np.float32(img_raw)
-        #img_raw -= [104.0, 117.0, 123.0]
-        #img = img_raw.transpose(2,0,1)
-        #return img[np.newaxis, ...].astype('float32')
+        # img_raw = np.float32(img_raw)
+        # img_raw -= [104.0, 117.0, 123.0]
+        # img = img_raw.transpose(2,0,1)
+        # return img[np.newaxis, ...].astype('float32')
         img = torch.as_tensor(img_raw, dtype=torch.float32, device=self.device)
         img -= torch.as_tensor([104, 117, 123], device=self.device)  # BGR
         return img.permute(2, 0, 1).unsqueeze(0)
@@ -121,7 +121,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     img = self.preprocessor(pic)
                     priors = self.prior_box(img.shape[2:])
                     emb = self.face_detector.detect_align(pic, img, priors)[0]
-                    if len(face) == 1:
+                    if len(emb) == 1:
                         embs.append(emb)
                     else:
                         _LOGGER.error(person_img + " can't be used for training")
@@ -156,7 +156,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
     def process_image(self, image):
         """Process image."""
-        found = []
+        found = embs = []
         if self._det == "on":
             img = self.preprocessor(image)
             if len(self.priors) < 1:
@@ -169,4 +169,4 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                 min_idx[minimum > self.threshold] = -1  # if no match
                 for idx, _ in enumerate(embs):
                     found.append({ATTR_NAME: self.names[min_idx[idx] + 1]})
-        self.process_faces(found, len(found))
+        self.process_faces(found, len(embs))
