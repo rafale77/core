@@ -61,8 +61,6 @@ def xywh2xyxy(x):
 def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, classes=None):
     """Return detection with shape: nx6 (x1, y1, x2, y2, conf, cls)."""
 
-#    if prediction.dtype is torch.float16:
-#        prediction = prediction.float()  # to FP32
     nc = prediction[0].shape[1] - 5  # number of classes
     xc = prediction[..., 4] > conf_thres  # candidates
 
