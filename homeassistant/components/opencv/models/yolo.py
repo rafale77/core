@@ -15,7 +15,7 @@ from torch.nn import (
     ReLU,
     ReLU6,
     Sequential,
-    SyncBatchNorm
+    SyncBatchNorm,
 )
 import yaml  # for torch hub
 
@@ -125,7 +125,7 @@ class Detect(Module):
         return (torch.cat(z, 1), x)
 
     @staticmethod
-    def _make_grid(nx: int=20, ny: int=20):
+    def _make_grid(nx: int = 20, ny: int = 20):
         yv, xv = torch.meshgrid([torch.arange(ny), torch.arange(nx)])
         return torch.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).to(device)
 
