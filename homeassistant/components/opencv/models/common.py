@@ -1,6 +1,7 @@
-from mish_cuda import MishCuda as Mish
 from typing import List
-from torch import cat, Tensor
+
+from mish_cuda import MishCuda as Mish
+from torch import Tensor, cat
 from torch.nn import (
     BatchNorm2d,
     Conv2d,
