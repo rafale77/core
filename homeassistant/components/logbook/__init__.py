@@ -1,7 +1,7 @@
 """Event parser and human readable log generator."""
 from datetime import timedelta
 from itertools import groupby
-import json
+import orjson as json
 import re
 
 import sqlalchemy
