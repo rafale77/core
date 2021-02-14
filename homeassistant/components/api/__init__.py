@@ -1,11 +1,11 @@
 """Rest API for Home Assistant."""
 import asyncio
-import json
 import logging
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest
 import async_timeout
+import orjson as json
 import voluptuous as vol
 
 from homeassistant.auth.permissions.const import POLICY_READ
