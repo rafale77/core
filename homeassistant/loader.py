@@ -7,9 +7,9 @@ documentation as possible to keep it understandable.
 import asyncio
 import functools as ft
 import importlib
-import json
 import logging
 import pathlib
+import orjson as json
 import sys
 from types import ModuleType
 from typing import (
