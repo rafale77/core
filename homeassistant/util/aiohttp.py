@@ -1,6 +1,6 @@
 """Utilities to help with aiohttp."""
 import io
-import json
+import orjson as json
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qsl
 
