@@ -1,5 +1,4 @@
 """Handle the frontend for Home Assistant."""
-import json
 import logging
 import mimetypes
 import os
@@ -8,6 +7,7 @@ from typing import Any, Dict, Optional, Set, Tuple
 
 from aiohttp import hdrs, web, web_urldispatcher
 import jinja2
+import orjson as json
 import voluptuous as vol
 from yarl import URL
 
