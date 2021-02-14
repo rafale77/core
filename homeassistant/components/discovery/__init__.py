@@ -7,10 +7,10 @@ Knows which components handle certain types, will make sure they are
 loaded before the EVENT_PLATFORM_DISCOVERED is fired.
 """
 from datetime import timedelta
-import json
 import logging
 
 from netdisco.discovery import NetworkDiscovery
+import orjson as json
 import voluptuous as vol
 
 from homeassistant import config_entries
