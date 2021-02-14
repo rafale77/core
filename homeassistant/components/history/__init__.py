@@ -2,8 +2,8 @@
 from collections import defaultdict
 from datetime import datetime as dt, timedelta
 from itertools import groupby
-import json
 import logging
+import orjson as json
 import time
 from typing import Iterable, Optional, cast
 
