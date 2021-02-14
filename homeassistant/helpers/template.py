@@ -5,10 +5,10 @@ import base64
 import collections.abc
 from datetime import datetime, timedelta
 from functools import partial, wraps
-import json
 import logging
 import math
 from operator import attrgetter
+import orjson as json
 import random
 import re
 from typing import Any, Dict, Generator, Iterable, Optional, Type, Union, cast
