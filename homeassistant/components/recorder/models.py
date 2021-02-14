@@ -1,7 +1,7 @@
 """Models for SQLAlchemy."""
-import json
 import logging
 
+import orjson as json
 from sqlalchemy import (
     Boolean,
     Column,
