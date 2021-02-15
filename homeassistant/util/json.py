@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from homeassistant.core import Event, State
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.json import JSONEncoder
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -54,9 +54,11 @@ def save_json(
 
     Returns True on success.
     """
-
     try:
-        json_data = json.dumps(data, indent=4, cls=JSONEncoder)
+        if encoder == None:
+            json_data = orjson.dumps(data).decode('utf-8')
+        else:
+            json_data = json.dumps(data, indent=4, cls=encoder)
     except TypeError as error:
         msg = f"Failed to serialize to JSON: {filename}. Bad data at {format_unserializable_data(find_paths_unserializable_data(data))}"
         _LOGGER.error(msg)
@@ -96,7 +98,7 @@ def format_unserializable_data(data: Dict[str, Any]) -> str:
 
 
 def find_paths_unserializable_data(
-    bad_data: Any, *, dump: Callable[[Any], str] = str(orjson.dumps)
+    bad_data: Any, *, dump: Callable[[Any], str] = json.dumps
 ) -> Dict[str, Any]:
     """Find the paths to unserializable data.
 
