@@ -11,9 +11,10 @@ My own running fork of home-assistant with improved performance
 Changes implemented:
 
 1. Image Processing component got a new "get raw image" function to avoid unnecessary image conversion between image formats for processing.
-2. DLib Face Identify component switched from dlib to use a pytorch implementation of retinaface(resnet50) + arcface(resnet101).
-3. opencv object detection component changed to pytorch implementation of ScaledYoloV4.
-4. json encoder/decoder changed to orjson.
+2. Camera component backbone moved from ffmpeg to much more efficient opencv
+3. DLib Face Identify component switched from dlib to use a pytorch implementation of retinaface(resnet50) + arcface(resnet101).
+4. opencv object detection component changed to pytorch implementation of ScaledYoloV4.
+5. json encoder/decoder changed to orjson.
 
 |screenshot-states|
 
