@@ -1,7 +1,8 @@
 """Models for SQLAlchemy."""
+import json
 import logging
 
-import orjson as json
+import orjson
 from sqlalchemy import (
     Boolean,
     Column,
@@ -86,7 +87,7 @@ class Events(Base):  # type: ignore
         try:
             return Event(
                 self.event_type,
-                json.loads(self.event_data),
+                orjson.loads(self.event_data),
                 EventOrigin(self.origin),
                 process_timestamp(self.time_fired),
                 context=context,
@@ -158,7 +159,7 @@ class States(Base):  # type: ignore
             return State(
                 self.entity_id,
                 self.state,
-                json.loads(self.attributes),
+                orjson.loads(self.attributes),
                 process_timestamp(self.last_changed),
                 process_timestamp(self.last_updated),
                 # Join the events table on event_id to get the context instead
