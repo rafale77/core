@@ -20,4 +20,4 @@ class JSONEncoder(json.JSONEncoder):
         if hasattr(o, "as_dict"):
             return o.as_dict()
 
-        return str(orjson.dumps(o))
+        return orjson.dumps(o)
