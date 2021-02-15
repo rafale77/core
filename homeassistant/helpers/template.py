@@ -5,7 +5,6 @@ import base64
 import collections.abc
 from datetime import datetime, timedelta
 from functools import partial, wraps
-import json
 import logging
 import math
 from operator import attrgetter
@@ -33,7 +32,6 @@ from homeassistant.const import (
 from homeassistant.core import State, callback, split_entity_id, valid_entity_id
 from homeassistant.exceptions import TemplateError
 from homeassistant.helpers import location as loc_helper
-from homeassistant.helpers.json import JSONEncoder 
 from homeassistant.helpers.typing import HomeAssistantType, TemplateVarsType
 from homeassistant.loader import bind_hass
 from homeassistant.util import convert, dt as dt_util, location as loc_util
@@ -1255,7 +1253,7 @@ def from_json(value):
 
 def to_json(value):
     """Convert an object to a JSON string."""
-    return json.dumps(value, cls=JSONEncoder)
+    return orjson.dumps(value).decode('utf-8')
 
 
 @contextfilter
