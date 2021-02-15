@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Set, Tuple
 
 from aiohttp import hdrs, web, web_urldispatcher
 import jinja2
-import orjson as json
+import json as json
 import voluptuous as vol
 from yarl import URL
 
@@ -18,6 +18,7 @@ from homeassistant.const import CONF_NAME, EVENT_THEMES_UPDATED
 from homeassistant.core import callback
 from homeassistant.helpers import service
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.json import JSONEncoder
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.loader import async_get_integration, bind_hass
 
@@ -529,7 +530,7 @@ class ManifestJSONView(HomeAssistantView):
     @callback
     def get(self, request):  # pylint: disable=no-self-use
         """Return the manifest.json."""
-        msg = json.dumps(MANIFEST_JSON, sort_keys=True)
+        msg = json.dumps(MANIFEST_JSON, sort_keys=True, cls=JSONEncoder)
         return web.Response(text=msg, content_type="application/manifest+json")
 
 
