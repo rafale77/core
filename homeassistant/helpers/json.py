@@ -1,7 +1,6 @@
 """Helpers to help with encoding Home Assistant objects in JSON."""
 from datetime import datetime
 import json
-import orjson
 from typing import Any
 
 
@@ -15,9 +14,8 @@ class JSONEncoder(json.JSONEncoder):
         """
         if isinstance(o, datetime):
             return o.isoformat()
-        if isinstance(o, set):
+        elif isinstance(o, set):
             return list(o)
-        if hasattr(o, "as_dict"):
+        elif hasattr(o, "as_dict"):
             return o.as_dict()
-
-        return orjson.dumps(o)
+        return json.JSONEncoder.default(self, o)
