@@ -99,7 +99,7 @@ def format_unserializable_data(data: Dict[str, Any]) -> str:
 
 
 def find_paths_unserializable_data(
-    bad_data: Any, *, dump: Callable[[Any], str] = orjson.dumps
+    bad_data: Any, *, dump: Callable[[Any], str] = str(orjson.dumps)
 ) -> Dict[str, Any]:
     """Find the paths to unserializable data.
 
