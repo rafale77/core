@@ -1,4 +1,4 @@
-Home Assistant |Chat Status|
+Home Assistant
 =================================================================================
 
 Open source home automation that puts local control and privacy first. Powered by a worldwide community of tinkerers and DIY enthusiasts. Perfect to run on a Raspberry Pi or a local server.
@@ -6,6 +6,13 @@ Open source home automation that puts local control and privacy first. Powered b
 Check out `home-assistant.io <https://home-assistant.io>`__ for `a
 demo <https://home-assistant.io/demo/>`__, `installation instructions <https://home-assistant.io/getting-started/>`__,
 `tutorials <https://home-assistant.io/getting-started/automation/>`__ and `documentation <https://home-assistant.io/docs/>`__.
+
+My own running fork of home-assistant with improved performance
+Changes implemented:
+Image Processing component got a new "get raw image" function to avoid unnecessary image conversion between image formats for processing.
+D-Lib Face Identify component switched from dlib to use a pytorch implementation of retinaface(resnet50) + arcface(resnet101).
+opencv object detection component changed to pytorch implementation of ScaledYoloV4.
+json encoder/decoder changed to orjson
 
 |screenshot-states|
 
