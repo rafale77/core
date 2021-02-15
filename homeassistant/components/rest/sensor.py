@@ -6,6 +6,7 @@ from xml.parsers.expat import ExpatError
 import httpx
 from jsonpath import jsonpath
 import voluptuous as vol
+import orjson
 import xmltodict
 
 from homeassistant.components.sensor import DEVICE_CLASSES_SCHEMA, PLATFORM_SCHEMA
@@ -32,6 +33,7 @@ from homeassistant.const import (
 from homeassistant.exceptions import PlatformNotReady
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers import JSONEncoder
 from homeassistant.helpers.reload import async_setup_reload_service
 
 from . import DOMAIN, PLATFORMS
@@ -230,7 +232,7 @@ class RestSensor(Entity):
                 or content_type.startswith("application/xhtml+xml")
             ):
                 try:
-                    value = json.dumps(xmltodict.parse(value))
+                    value = json.dumps(xmltodict.parse(value), cls=JSONEncoder
                     _LOGGER.debug("JSON converted from XML: %s", value)
                 except ExpatError:
                     _LOGGER.warning(
@@ -242,7 +244,7 @@ class RestSensor(Entity):
             self._attributes = {}
             if value:
                 try:
-                    json_dict = json.loads(value)
+                    json_dict = orjson.loads(value)
                     if self._json_attrs_path is not None:
                         json_dict = jsonpath(json_dict, self._json_attrs_path)
                     # jsonpath will always store the result in json_dict[0]
