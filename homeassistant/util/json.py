@@ -2,6 +2,7 @@
 from collections import deque
 import json
 import logging
+import orjson
 import os
 import tempfile
 from typing import Any, Callable, Dict, List, Optional, Type, Union
@@ -29,7 +30,7 @@ def load_json(
     """
     try:
         with open(filename, encoding="utf-8") as fdesc:
-            return json.loads(fdesc.read())  # type: ignore
+            return orjson.loads(fdesc.read())  # type: ignore
     except FileNotFoundError:
         # This is not a fatal error
         _LOGGER.debug("JSON file not found: %s", filename)
@@ -53,8 +54,12 @@ def save_json(
 
     Returns True on success.
     """
+
     try:
-        json_data = json.dumps(data, indent=4, cls=encoder)
+        if encoder == None:
+            json_data = str(orjson.dumps(data))
+        else:
+            json_data = json.dumps(data, indent=4, cls=encoder)
     except TypeError as error:
         msg = f"Failed to serialize to JSON: {filename}. Bad data at {format_unserializable_data(find_paths_unserializable_data(data))}"
         _LOGGER.error(msg)
@@ -94,7 +99,7 @@ def format_unserializable_data(data: Dict[str, Any]) -> str:
 
 
 def find_paths_unserializable_data(
-    bad_data: Any, *, dump: Callable[[Any], str] = json.dumps
+    bad_data: Any, *, dump: Callable[[Any], str] = orjson.dumps
 ) -> Dict[str, Any]:
     """Find the paths to unserializable data.
 
