@@ -1,6 +1,7 @@
 """Helpers to help with encoding Home Assistant objects in JSON."""
 from datetime import datetime
 import json
+import orjson
 from typing import Any
 
 
@@ -19,4 +20,4 @@ class JSONEncoder(json.JSONEncoder):
         if hasattr(o, "as_dict"):
             return o.as_dict()
 
-        return json.JSONEncoder.default(self, o)
+        return str(orjson.dumps(o))
