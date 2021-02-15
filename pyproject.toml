@@ -48,6 +48,7 @@ extension-pkg-whitelist = [
     "mish-cuda",
     "thop",
     "numpy",
+    "orjson",
 ]
 
 [tool.pylint.BASIC]
