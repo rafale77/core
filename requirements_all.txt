@@ -1083,6 +1083,9 @@ oru==0.1.11
 # homeassistant.components.orvibo
 orvibo==1.1.1
 
+# homeassitant.components.recorder
+orjson==3.4.8
+
 # homeassistant.components.ovo_energy
 ovoenergy==1.1.11
 
