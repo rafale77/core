@@ -5,10 +5,10 @@ import base64
 import collections.abc
 from datetime import datetime, timedelta
 from functools import partial, wraps
+import json
 import logging
 import math
 from operator import attrgetter
-import orjson as json
 import random
 import re
 from typing import Any, Dict, Generator, Iterable, Optional, Type, Union, cast
@@ -19,6 +19,7 @@ import jinja2
 from jinja2 import contextfilter, contextfunction
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 from jinja2.utils import Namespace  # type: ignore
+import orjson
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -32,6 +33,7 @@ from homeassistant.const import (
 from homeassistant.core import State, callback, split_entity_id, valid_entity_id
 from homeassistant.exceptions import TemplateError
 from homeassistant.helpers import location as loc_helper
+from homeassistant.helpers.json import JSONEncoder 
 from homeassistant.helpers.typing import HomeAssistantType, TemplateVarsType
 from homeassistant.loader import bind_hass
 from homeassistant.util import convert, dt as dt_util, location as loc_util
@@ -503,7 +505,7 @@ class Template:
         variables["value"] = value
 
         try:
-            variables["value_json"] = json.loads(value)
+            variables["value_json"] = orjson.loads(value)
         except (ValueError, TypeError):
             pass
 
@@ -1248,12 +1250,12 @@ def ordinal(value):
 
 def from_json(value):
     """Convert a JSON string to an object."""
-    return json.loads(value)
+    return orjson.loads(value)
 
 
 def to_json(value):
     """Convert an object to a JSON string."""
-    return json.dumps(value)
+    return json.dumps(value, cls=JSONEncoder)
 
 
 @contextfilter
