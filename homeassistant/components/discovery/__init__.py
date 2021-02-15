@@ -7,10 +7,10 @@ Knows which components handle certain types, will make sure they are
 loaded before the EVENT_PLATFORM_DISCOVERED is fired.
 """
 from datetime import timedelta
+import json as json
 import logging
 
 from netdisco.discovery import NetworkDiscovery
-import orjson as json
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -20,6 +20,7 @@ from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import async_discover, async_load_platform
 from homeassistant.helpers.event import async_track_point_in_utc_time
+from homeassistant.helpers.json import JSONEncoder
 import homeassistant.util.dt as dt_util
 
 DOMAIN = "discovery"
@@ -156,7 +157,7 @@ async def async_setup(hass, config):
             logger.info("Ignoring service: %s %s", service, info)
             return
 
-        discovery_hash = json.dumps([service, info], sort_keys=True)
+        discovery_hash = json.dumps([service, info], sort_keys=True, cls=JSONEncoder)
         if discovery_hash in already_discovered:
             logger.debug("Already discovered service %s %s.", service, info)
             return
