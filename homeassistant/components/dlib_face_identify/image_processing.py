@@ -27,6 +27,7 @@ ATTR_TOTAL_FACES = "total_faces"
 ATTR_MOTION = "detection"
 # torch.backends.cudnn.benchmark = True
 
+
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Dlib Face detection platform."""
 
