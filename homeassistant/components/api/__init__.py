@@ -1,11 +1,12 @@
 """Rest API for Home Assistant."""
 import asyncio
+import json
 import logging
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPBadRequest
 import async_timeout
-import orjson as json
+import orjson
 import voluptuous as vol
 
 from homeassistant.auth.permissions.const import POLICY_READ
@@ -317,7 +318,7 @@ class APIEventView(HomeAssistantView):
             raise Unauthorized()
         body = await request.text()
         try:
-            event_data = json.loads(body) if body else None
+            event_data = orjson.loads(body) if body else None
         except ValueError:
             return self.json_message(
                 "Event data should be valid JSON.", HTTP_BAD_REQUEST
@@ -370,7 +371,7 @@ class APIDomainServicesView(HomeAssistantView):
         hass = request.app["hass"]
         body = await request.text()
         try:
-            data = json.loads(body) if body else None
+            data = orjson.loads(body) if body else None
         except ValueError:
             return self.json_message("Data should be valid JSON.", HTTP_BAD_REQUEST)
 
