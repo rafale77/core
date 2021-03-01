@@ -15,6 +15,7 @@ Changes implemented:
 3. DLib Face Identify component switched from dlib to use a pytorch implementation of retinaface(resnet50) + arcface(resnet101).
 4. opencv object detection component changed to pytorch implementation of ScaledYoloV4.
 5. json encoder/decoder changed to orjson.
+6. Added on/off switching capability to image processing component 
 
 |screenshot-states|
 
