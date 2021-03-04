@@ -257,9 +257,21 @@ async def async_setup_entry(
 class ZWaveBooleanBinarySensor(ZWaveBaseEntity, BinarySensorEntity):
     """Representation of a Z-Wave binary_sensor."""
 
+    def __init__(
+        self,
+        config_entry: ConfigEntry,
+        client: ZwaveClient,
+        info: ZwaveDiscoveryInfo,
+    ) -> None:
+        """Initialize a ZWaveBooleanBinarySensor entity."""
+        super().__init__(config_entry, client, info)
+        self._name = self.generate_name(include_value_name=True)
+
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> Optional[bool]:
         """Return if the sensor is on or off."""
+        if self.info.primary_value.value is None:
+            return None
         return bool(self.info.primary_value.value)
 
     @property
@@ -275,7 +287,7 @@ class ZWaveBooleanBinarySensor(ZWaveBaseEntity, BinarySensorEntity):
         if self.info.primary_value.command_class == CommandClass.SENSOR_BINARY:
             # Legacy binary sensors are phased out (replaced by notification sensors)
             # Disable by default to not confuse users
-            if self.info.node.device_class.generic != "Binary Sensor":
+            if self.info.node.device_class.generic.key != 0x20:
                 return False
         return True
 
@@ -293,21 +305,20 @@ class ZWaveNotificationBinarySensor(ZWaveBaseEntity, BinarySensorEntity):
         """Initialize a ZWaveNotificationBinarySensor entity."""
         super().__init__(config_entry, client, info)
         self.state_key = state_key
+        self._name = self.generate_name(
+            include_value_name=True,
+            alternate_value_name=self.info.primary_value.property_name,
+            additional_info=[self.info.primary_value.metadata.states[self.state_key]],
+        )
         # check if we have a custom mapping for this value
         self._mapping_info = self._get_sensor_mapping()
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> Optional[bool]:
         """Return if the sensor is on or off."""
+        if self.info.primary_value.value is None:
+            return None
         return int(self.info.primary_value.value) == int(self.state_key)
-
-    @property
-    def name(self) -> str:
-        """Return default name from device name and value name combination."""
-        node_name = self.info.node.name or self.info.node.device_config.description
-        value_name = self.info.primary_value.property_name
-        state_label = self.info.primary_value.metadata.states[self.state_key]
-        return f"{node_name}: {value_name} - {state_label}"
 
     @property
     def device_class(self) -> Optional[str]:
@@ -351,10 +362,13 @@ class ZWavePropertyBinarySensor(ZWaveBaseEntity, BinarySensorEntity):
         super().__init__(config_entry, client, info)
         # check if we have a custom mapping for this value
         self._mapping_info = self._get_sensor_mapping()
+        self._name = self.generate_name(include_value_name=True)
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> Optional[bool]:
         """Return if the sensor is on or off."""
+        if self.info.primary_value.value is None:
+            return None
         return self.info.primary_value.value in self._mapping_info["on_states"]
 
     @property
