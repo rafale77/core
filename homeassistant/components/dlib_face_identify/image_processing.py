@@ -15,6 +15,7 @@ from homeassistant.components.image_processing import (
     CONF_SOURCE,
     ImageProcessingFaceEntity,
 )
+from homeassistant.const import ATTR_NAME
 from homeassistant.core import split_entity_id
 
 from .models import FaceDetector
