@@ -186,7 +186,7 @@ class ImageProcessingFaceEntity(ImageProcessingEntity):
         """Initialize base face identify/verify entity."""
         self.faces = []
         self.total_faces = 0
-        self.det = "on"
+        self.det = "off"
 
     def enable_detection(self):
         """Enable motion detection in the camera."""
