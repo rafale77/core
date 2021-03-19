@@ -55,7 +55,7 @@ def save_json(
     Returns True on success.
     """
     try:
-        if encoder == None:
+        if encoder is None:
             json_data = orjson.dumps(data).decode('utf-8')
         else:
             json_data = json.dumps(data, indent=4, cls=encoder)
