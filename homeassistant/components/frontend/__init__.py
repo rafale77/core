@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Set, Tuple
 
 from aiohttp import hdrs, web, web_urldispatcher
 import jinja2
-import orjson as json
+import orjson
 import voluptuous as vol
 from yarl import URL
 
@@ -528,7 +528,7 @@ class ManifestJSONView(HomeAssistantView):
     @callback
     def get(self, request):  # pylint: disable=no-self-use
         """Return the manifest.json."""
-        msg = json.dumps(MANIFEST_JSON, option=orjson.OPT_SORT_KEYS).decode('utf-8')
+        msg = orjson.dumps(MANIFEST_JSON, option=orjson.OPT_SORT_KEYS).decode('utf-8')
         return web.Response(text=msg, content_type="application/manifest+json")
 
 
