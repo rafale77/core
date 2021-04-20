@@ -1,4 +1,10 @@
 """Support for FFmpeg."""
+from __future__ import annotations
+
+import asyncio
+import re
+
+from haffmpeg.tools import IMAGE_JPEG, FFVersion, ImageFrame
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -82,7 +88,12 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_get_image(hass, input_source, output_format, extra_cmd=None):
+async def async_get_image(
+    hass: HomeAssistantType,
+    input_source: str,
+    output_format: str = IMAGE_JPEG,
+    extra_cmd: str | None = None,
+):
     """Get an image from a frame of an RTSP stream."""
     return
 

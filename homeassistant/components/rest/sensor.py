@@ -8,7 +8,11 @@ import voluptuous as vol
 import orjson
 import xmltodict
 
-from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN, PLATFORM_SCHEMA
+from homeassistant.components.sensor import (
+    DOMAIN as SENSOR_DOMAIN,
+    PLATFORM_SCHEMA,
+    SensorEntity,
+)
 from homeassistant.const import (
     CONF_DEVICE_CLASS,
     CONF_FORCE_UPDATE,
@@ -83,7 +87,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     )
 
 
-class RestSensor(RestEntity):
+class RestSensor(RestEntity, SensorEntity):
     """Implementation of a REST sensor."""
 
     def __init__(
@@ -121,7 +125,7 @@ class RestSensor(RestEntity):
         return self._state
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         return self._attributes
 
