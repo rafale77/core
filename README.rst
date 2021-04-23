@@ -29,7 +29,7 @@ B. install ffmpeg with GPU acceleration buy building from source. Instructions `
 
 C. Install opencv with GPU acceleration by compiling it from source. I found that the latest version, 4.5.2 had some breaking changes to the video handling so I recommend sticking with 4.5.1
 
-.. code-block:: RST
+.. code-block:: bash
 git clone --branch 4.5.1 https://github.com/opencv/opencv.git
 git clone --branch 4.5.1 https://github.com/opencv/opencv_contrib.git
 cd opencv
@@ -61,7 +61,7 @@ E. Download pretrained models:
  in your configuration.yaml file first setup your camera streams using the ffmpeg component which again has been modified to use opencv. Note the use of the extra argument, cuda for h264 decoding and hevc for h265 decoding. 
  i.e
  
-.. code-block:: RST 
+.. code-block:: bash 
 camera
   - platform: ffmpeg
     input: rtsp://user:pwd@ip:port/cam/realmonitor?channel=1&subtype=0
@@ -74,7 +74,7 @@ camera
  
  then setup the image processing components like you would for dlib and opencv i.e.
  
-.. code-block:: RST 
+.. code-block:: bash 
  image_processing:
   - platform: dlib_face_identify
     scan_interval: 0.5
