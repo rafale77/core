@@ -65,8 +65,7 @@ Upload these files to the model folder set in the previous step
 create folders for each of the faces you want recognized i.e mkdir ~/.homeassistant/recogface/me and upload face pictures (I recommend at least dozen) for each of the people in their corresponding folder.
     
 7. Configure homeassistant:
- in your configuration.yaml file first setup your camera streams using the ffmpeg component which again has been modified to use opencv. Note the use of the extra argument, cuda for h264 decoding and hevc for h265 decoding. 
- i.e
+In your configuration.yaml file first setup your camera streams using the ffmpeg component which again has been modified to use opencv. Note the use of the extra argument, cuda for h264 decoding and hevc for h265 decoding. i.e.
  
 .. code-block:: bash
 
