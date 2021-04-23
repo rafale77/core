@@ -20,14 +20,14 @@ Changes implemented:
 
 Installation instructions:
 
-A. nVidia GPU drivers, cuda and cudnn installation: Follow the nvidia instructions to install the drivers and library for your platform.
+1. nVidia GPU drivers, cuda and cudnn installation: Follow the nvidia instructions to install the drivers and library for your platform.
 drivers found `here <https://www.nvidia.com/Download/index.aspx?lang=en-us>`__
 cuda library found `here <https://developer.nvidia.com/cuda-downloads?target_os=Linux>`__
 cudnn library which requires signing up to an nvidia dev account found `here <https://developer.nvidia.com/cudnn>`__
 
-B. install ffmpeg with GPU acceleration buy building from source. Instructions `here <https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/index.html>`__
+2. Install ffmpeg with GPU acceleration buy building from source. Instructions `here <https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/index.html>`__
 
-C. Install opencv with GPU acceleration by compiling it from source. I found that the latest version, 4.5.2 had some breaking changes to the video handling so I recommend sticking with 4.5.1
+3. Install opencv with GPU acceleration by compiling it from source. I found that the latest version, 4.5.2 had some breaking changes to the video handling so I recommend sticking with 4.5.1
 
 .. code-block:: bash
 
@@ -41,9 +41,9 @@ sudo make install
 
 Note that I am using the cuda architecture 8.6 which corresponds to RTX30xx GPUs. make sure that you use the correct one for your GPU.
 
-D. Install pytorch for your platform and cuda version following this `page <https://pytorch.org/get-started/locally/>`__
+4. Install pytorch for your platform and cuda version following this `page <https://pytorch.org/get-started/locally/>`__
 
-E. Download pretrained models:
+5. Download pretrained models:
    create a folder called "model" under your ".homeassistant/" configuration folder.
 .. code-block:: bash
 
@@ -56,15 +56,15 @@ For facial recognition, download the IR-100 file from this repo: https://github.
 The file is contained `here <https://drive.google.com/file/d/1xp1IqsiArqf0XEqc7O5aq8KMhrvw3DbE/view?usp=sharing>`__
 Upload these files to the model folder set in the previous step
  
-F. Face database:
+6. Face database:
     create a face databade folder under your ".homeassistant/" configuration folder.
 .. code-block:: bash
 
  mkdir ~/.homeassistant/recogface
     
-    create folders for each of the faces you want recognized i.e mkdir ~/.homeassistant/recogface/me and upload face pictures (I recommend at least dozen) for each of the people in their corresponding folder.
+create folders for each of the faces you want recognized i.e mkdir ~/.homeassistant/recogface/me and upload face pictures (I recommend at least dozen) for each of the people in their corresponding folder.
     
- G. Configure homeassistant:
+7. Configure homeassistant:
  in your configuration.yaml file first setup your camera streams using the ffmpeg component which again has been modified to use opencv. Note the use of the extra argument, cuda for h264 decoding and hevc for h265 decoding. 
  i.e
  
