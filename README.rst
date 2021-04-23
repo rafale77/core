@@ -45,8 +45,10 @@ D. Install pytorch for your platform and cuda version following this `page <http
 
 E. Download pretrained models:
    create a folder called "model" under your ".homeassistant/" configuration folder.
+.. code-block:: bash
    mkdir ~/.homeassistant/model
-   For object detections using enhanced yolov4 see `here <https://github.com/WongKinYiu/ScaledYOLOv4/tree/yolov4-large>`__ by default the repo uses yolov4-p5_.pt 
+   
+   For object detections using enhanced yolov4 see `here <https://github.com/WongKinYiu/ScaledYOLOv4/tree/yolov4-large>`__ by default the repo uses "yolov4-p5_.pt" 
    For face detection, download the file resnet50 model from this retinaface repo: https://github.com/biubug6/Pytorch_Retinaface
    The file can be obtained `here <https://drive.google.com/file/d/1wyvxIvjH1Xxvc4Qa4tvgV8ibWro1SM35/view?usp=sharing>`__
    For facial recognition, download the IR-100 file from this repo: https://github.com/cavalleria/cavaface.pytorch/blob/master/docs/MODEL_ZOO.md
@@ -55,7 +57,9 @@ E. Download pretrained models:
  
  F. Face database:
     create a face databade folder under your ".homeassistant/" configuration folder.
+.. code-block:: bash
     mkdir ~/.homeassistant/recogface
+    
     create folders for each of the faces you want recognized i.e mkdir ~/.homeassistant/recogface/me and upload face pictures (I recommend at least dozen) for each of the people in their corresponding folder.
     
  G. Configure homeassistant:
