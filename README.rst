@@ -29,7 +29,7 @@ B. install ffmpeg with GPU acceleration buy building from source. Instructions `
 
 C. Install opencv with GPU acceleration by compiling it from source. I found that the latest version, 4.5.2 had some breaking changes to the video handling so I recommend sticking with 4.5.1
 
-.. code-block:: bash
+```bash
 git clone --branch 4.5.1 https://github.com/opencv/opencv.git
 git clone --branch 4.5.1 https://github.com/opencv/opencv_contrib.git
 cd opencv
@@ -37,6 +37,7 @@ mkdir build && cd build
 cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D INSTALL_PYTHON_EXAMPLES=OFF -D INSTALL_C_EXAMPLES=OFF -D OPENCV_ENABLE_NONFREE=ON -D WITH_CUDA=ON -D WITH_CUDNN=ON -D WITH_CAFFE=ON -D WITH_NVCUVID=ON -D OPENCV_DNN_CUDA=ON -D ENABLE_FAST_MATH=ON -D CUDA_FAST_MATH=ON -D CUDA_ARCH_BIN=8.6 -D WITH_CUBLAS=ON -D OPENCV_EXTRA_MODULES_PATH=~/source/opencv_contrib/modules-D HAVE_opencv_python3=ON -D PYTHON_EXECUTABLE=/usr/bin/python3 -D BUILD_NEW_PYTHON_SUPPORT=ON -D CMAKE_CUDA_FLAGS=-lineinfo --use_fast_math -rdc=true -lcudadevrt -D BUILD_EXAMPLES=OFF ..
 make
 sudo make install
+```
 
 Note that I am using the cuda architecture 8.6 which corresponds to RTX30xx GPUs. make sure that you use the correct one for your GPU.
 
