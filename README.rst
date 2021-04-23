@@ -17,6 +17,85 @@ Changes implemented:
 5. json encoder/decoder changed to orjson.
 6. Added on/off switching capability to image processing component 
 
+
+Installation instructions:
+
+A. nVidia GPU drivers, cuda and cudnn installation: Follow the nvidia instructions to install the drivers and library for your platform.
+drivers found `here <https://www.nvidia.com/Download/index.aspx?lang=en-us>`
+cuda library found `here <https://developer.nvidia.com/cuda-downloads?target_os=Linux>`
+cudnn library which requires signing up to an nvidia dev account found `here <https://developer.nvidia.com/cudnn>`
+
+B. install ffmpeg with GPU acceleration buy building from source. Instructions `here <https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/index.html> `
+
+C. Install opencv with GPU acceleration by compiling it from source. I found that the latest version, 4.5.2 had some breaking changes to the video handling so I recommend sticking with 4.5.1
+
+.. code-block:: RST
+git clone --branch 4.5.1 https://github.com/opencv/opencv.git
+git clone --branch 4.5.1 https://github.com/opencv/opencv_contrib.git
+cd opencv
+mkdir build && cd build
+cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D INSTALL_PYTHON_EXAMPLES=OFF -D INSTALL_C_EXAMPLES=OFF -D OPENCV_ENABLE_NONFREE=ON -D WITH_CUDA=ON -D WITH_CUDNN=ON -D WITH_CAFFE=ON -D WITH_NVCUVID=ON -D OPENCV_DNN_CUDA=ON -D ENABLE_FAST_MATH=ON -D CUDA_FAST_MATH=ON -D CUDA_ARCH_BIN=8.6 -D WITH_CUBLAS=ON -D OPENCV_EXTRA_MODULES_PATH=~/source/opencv_contrib/modules-D HAVE_opencv_python3=ON -D PYTHON_EXECUTABLE=/usr/bin/python3 -D BUILD_NEW_PYTHON_SUPPORT=ON -D CMAKE_CUDA_FLAGS=-lineinfo --use_fast_math -rdc=true -lcudadevrt -D BUILD_EXAMPLES=OFF ..
+make
+sudo make install
+
+Note that I am using the cuda architecture 8.6 which corresponds to RTX30xx GPUs. make sure that you use the correct one for your GPU.
+
+D. Install pytorch for your platform and cuda version following this `page <https://pytorch.org/get-started/locally/>`
+
+E. Download pretrained models:
+   create a folder called "model" under your ".homeassistant/" configuration folder.
+   mkdir ~/.homeassistant/model
+   For object detections using enhanced yolov4 see `here <https://github.com/WongKinYiu/ScaledYOLOv4/tree/yolov4-large>` by default the repo uses yolov4-p5_.pt 
+   For face detection, download the file resnet50 model from this retinaface repo: https://github.com/biubug6/Pytorch_Retinaface
+   The file can be obtained `here <https://drive.google.com/file/d/1wyvxIvjH1Xxvc4Qa4tvgV8ibWro1SM35/view?usp=sharing>`
+   For facial recognition, download the IR-100 file from this repo: https://github.com/cavalleria/cavaface.pytorch/blob/master/docs/MODEL_ZOO.md
+   the file is contained `here <https://drive.google.com/file/d/1xp1IqsiArqf0XEqc7O5aq8KMhrvw3DbE/view?usp=sharing>`
+   Upload these files to the model folder set in the previous step
+ 
+ F. Face database:
+    create a face databade folder under your ".homeassistant/" configuration folder.
+    mkdir ~/.homeassistant/recogface
+    create folders for each of the faces you want recognized i.e mkdir ~/.homeassistant/recogface/me and upload face pictures (I recommend at least dozen) for each of the people in their corresponding folder.
+    
+ G. Configure homeassistant:
+ in your configuration.yaml file first setup your camera streams using the ffmpeg component which again has been modified to use opencv. Note the use of the extra argument, cuda for h264 decoding and hevc for h265 decoding. 
+ i.e
+ 
+.. code-block:: RST 
+camera
+  - platform: ffmpeg
+    input: rtsp://user:pwd@ip:port/cam/realmonitor?channel=1&subtype=0
+    name: Porch
+    extra_arguments: cuda
+  - platform: ffmpeg
+    input: rtsp://user:pwd@ip:port/cam/realmonitor?channel=1&subtype=0
+    name: kitchen
+    extra_arguments: hevc
+ 
+ then setup the image processing components like you would for dlib and opencv i.e.
+ 
+.. code-block:: RST 
+ image_processing:
+  - platform: dlib_face_identify
+    scan_interval: 0.5
+    source:
+    - entity_id: camera.doorbell
+      name: Doorbell
+  - platform: opencv
+    confidence: 0.8
+    scan_interval: 0.5
+    source:
+      - entity_id: camera.pelouse
+        name: Pelouse
+      - entity_id: camera.east2
+        name: East
+      - entity_id: camera.porch2
+        name: Porch
+      - entity_id: camera.patio2
+        name: Patio
+      - entity_id: camera.west2
+        name: West
+ 
 |screenshot-states|
 
 Featured integrations
