@@ -21,9 +21,9 @@ Changes implemented:
 Installation instructions:
 
 1. nVidia GPU drivers, cuda and cudnn installation: Follow the nvidia instructions to install the drivers and library for your platform.
--drivers found `here <https://www.nvidia.com/Download/index.aspx?lang=en-us>`__
--cuda library found `here <https://developer.nvidia.com/cuda-downloads?target_os=Linux>`__
--cudnn library which requires signing up to an nvidia dev account found `here <https://developer.nvidia.com/cudnn>`__
+  -drivers found `here <https://www.nvidia.com/Download/index.aspx?lang=en-us>`__
+  -cuda library found `here <https://developer.nvidia.com/cuda-downloads?target_os=Linux>`__
+  -cudnn library which requires signing up to an nvidia dev account found `here <https://developer.nvidia.com/cudnn>`__
 
 2. Install ffmpeg with GPU acceleration buy building from source. Instructions `here <https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/index.html>`__
 
