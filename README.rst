@@ -21,11 +21,11 @@ Changes implemented:
 Installation instructions:
 
 A. nVidia GPU drivers, cuda and cudnn installation: Follow the nvidia instructions to install the drivers and library for your platform.
-drivers found `here <https://www.nvidia.com/Download/index.aspx?lang=en-us>`
-cuda library found `here <https://developer.nvidia.com/cuda-downloads?target_os=Linux>`
-cudnn library which requires signing up to an nvidia dev account found `here <https://developer.nvidia.com/cudnn>`
+drivers found `here <https://www.nvidia.com/Download/index.aspx?lang=en-us>`__
+cuda library found `here <https://developer.nvidia.com/cuda-downloads?target_os=Linux>`__
+cudnn library which requires signing up to an nvidia dev account found `here <https://developer.nvidia.com/cudnn>`__
 
-B. install ffmpeg with GPU acceleration buy building from source. Instructions `here <https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/index.html> `
+B. install ffmpeg with GPU acceleration buy building from source. Instructions `here <https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/index.html>`__
 
 C. Install opencv with GPU acceleration by compiling it from source. I found that the latest version, 4.5.2 had some breaking changes to the video handling so I recommend sticking with 4.5.1
 
