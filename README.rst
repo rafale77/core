@@ -62,7 +62,8 @@ E. Download pretrained models:
  in your configuration.yaml file first setup your camera streams using the ffmpeg component which again has been modified to use opencv. Note the use of the extra argument, cuda for h264 decoding and hevc for h265 decoding. 
  i.e
  
-.. code-block:: bash 
+.. code-block:: bash
+
 camera
   - platform: ffmpeg
     input: rtsp://user:pwd@ip:port/cam/realmonitor?channel=1&subtype=0
@@ -75,7 +76,8 @@ camera
  
  then setup the image processing components like you would for dlib and opencv i.e.
  
-.. code-block:: bash 
+.. code-block:: bash
+
  image_processing:
   - platform: dlib_face_identify
     scan_interval: 0.5
