@@ -95,14 +95,7 @@ then setup the image processing components like you would for dlib and opencv i.
     source:
       - entity_id: camera.pelouse
         name: Pelouse
-      - entity_id: camera.east2
-        name: East
-      - entity_id: camera.porch2
-        name: Porch
-      - entity_id: camera.patio2
-        name: Patio
-      - entity_id: camera.west2
-        name: West
+
  
 |screenshot-states|
 
