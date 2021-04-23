@@ -45,6 +45,7 @@ Note that I am using the cuda architecture 8.6 which corresponds to RTX30xx GPUs
 4. Install pytorch for your platform and cuda version following this `page <https://pytorch.org/get-started/locally/>`__
 
 5. Download pretrained models: create a folder called "model" under your ".homeassistant/" configuration folder.
+
 .. code-block:: bash
 
  mkdir ~/.homeassistant/model
@@ -58,11 +59,13 @@ Upload these files to the model folder set in the previous step
  
 6. Face database:
 create a face databade folder under your ".homeassistant/" configuration folder.
+
 .. code-block:: bash
 
  mkdir ~/.homeassistant/recogface
     
-create folders for each of the faces you want recognized i.e. 
+create folders for each of the faces you want recognized i.e.
+
 .. code-block:: bash
 
  mkdir ~/.homeassistant/recogface/me 
