@@ -57,7 +57,6 @@ Note that I am using the cuda architecture 8.6 which corresponds to RTX30xx GPUs
 | The file is contained `here <https://drive.google.com/file/d/1xp1IqsiArqf0XEqc7O5aq8KMhrvw3DbE/view?usp=sharing>`__
 | Upload these files to the model folder set in the previous step.
 
-
 6. Face database:
 create a face databade folder under your ".homeassistant/" configuration folder.
 
