@@ -2,7 +2,7 @@
 from pathlib import Path
 import sys
 
-import cv2
+import cv2 # pylint: disable=import-error
 import torch
 import voluptuous as vol
 

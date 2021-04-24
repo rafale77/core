@@ -5,7 +5,7 @@ from math import ceil
 import os
 from pathlib import Path
 
-import cv2
+import cv2 # pylint: disable=import-error
 import numpy as np
 import torch
 

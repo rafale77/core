@@ -3,7 +3,7 @@ import logging
 import os
 from threading import Event, Thread
 
-import cv2
+import cv2 # pylint: disable=import-error
 import voluptuous as vol
 
 from homeassistant.components.camera import PLATFORM_SCHEMA, SUPPORT_STREAM, Camera

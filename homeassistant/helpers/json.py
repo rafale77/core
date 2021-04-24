@@ -14,9 +14,8 @@ class JSONEncoder(json.JSONEncoder):
         """
         if isinstance(o, datetime):
             return o.isoformat()
-        elif isinstance(o, set):
+        if isinstance(o, set):
             return list(o)
-        elif hasattr(o, "as_dict"):
+        if hasattr(o, "as_dict"):
             return o.as_dict()
-        else:
-            return json.JSONEncoder.default(self, o)
+        return json.JSONEncoder.default(self, o)
