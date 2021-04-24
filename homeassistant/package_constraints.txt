@@ -20,7 +20,7 @@ home-assistant-frontend==20210407.3
 httpx==0.17.1
 jinja2>=2.11.3
 netdisco==2.8.2
-orjson==3.4.8
+orjson>=3.4.8
 paho-mqtt==1.5.1
 pillow==8.1.2
 pip>=8.0.3,<20.3
