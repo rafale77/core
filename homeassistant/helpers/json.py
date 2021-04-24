@@ -18,5 +18,5 @@ class JSONEncoder(json.JSONEncoder):
             return list(o)
         elif hasattr(o, "as_dict"):
             return o.as_dict()
-        else
+        else:
             return json.JSONEncoder.default(self, o)
