@@ -2235,11 +2235,11 @@ toonapi==0.2.0
 
 # homeassistant.components.dlib_face_identify
 # homeassistant.components.opencv
-torch==1.7.1
+torch==1.8.1
 
 # homeassistant.components.dlib_face_identify
 # homeassistant.components.opencv
-torchvision==0.8.2
+torchvision==0.9.1
 
 # homeassistant.components.totalconnect
 total_connect_client==0.57
