@@ -1054,9 +1054,6 @@ samsungtvws==1.6.0
 # homeassistant.components.dhcp
 scapy==2.4.4
 
-# homeassistant.components.dlib_face_identify
-scikit-image==0.18.1
-
 # homeassistant.components.screenlogic
 screenlogicpy==0.2.1
 
