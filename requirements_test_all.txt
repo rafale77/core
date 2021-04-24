@@ -560,6 +560,9 @@ onvif-zeep-async==1.0.0
 # homeassistant.components.openerz
 openerz-api==0.1.0
 
+# homeassitant.components.recorder
+orjson==3.4.8
+
 # homeassistant.components.ovo_energy
 ovoenergy==1.1.11
 

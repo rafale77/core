@@ -1077,6 +1077,9 @@ openwrt-luci-rpc==1.1.8
 # homeassistant.components.ubus
 openwrt-ubus-rpc==0.0.2
 
+# homeassitant.components.recorder
+orjson==3.4.8
+
 # homeassistant.components.oru
 oru==0.1.11
 
