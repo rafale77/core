@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import List, Tuple
 
-import cv2 # pylint: disable=import-error
+import cv2  # pylint: disable=import-error
 import numpy as np
 from skimage.transform import SimilarityTransform
 import torch
