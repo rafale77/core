@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import io
-import orjson as json
 from typing import Any
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, MultiDict
+import orjson as json
 
 from homeassistant.const import HTTP_OK
 

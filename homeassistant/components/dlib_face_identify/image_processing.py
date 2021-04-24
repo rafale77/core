@@ -22,7 +22,6 @@ from .models import FaceDetector
 
 _LOGGER = logging.getLogger(__name__)
 home = str(Path.home()) + "/.homeassistant/"
-ATTR_NAME = "name"
 ATTR_FACES = "faces"
 ATTR_TOTAL_FACES = "total_faces"
 ATTR_MOTION = "detection"
@@ -82,9 +81,13 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
 
         for k, f in enumerate(feature_maps):
             min_size = min_sizes[k]
-            mat = np.array(list(product(range(f[0]), range(f[1]), min_size))).astype(np.float32)
-            mat[:, 0], mat[:, 1] = ((mat[:, 1] + 0.5) * steps[k] / image_size[1],
-                                    (mat[:, 0] + 0.5) * steps[k] / image_size[0])
+            mat = np.array(list(product(range(f[0]), range(f[1]), min_size))).astype(
+                np.float32
+            )
+            mat[:, 0], mat[:, 1] = (
+                (mat[:, 1] + 0.5) * steps[k] / image_size[1],
+                (mat[:, 0] + 0.5) * steps[k] / image_size[0],
+            )
             mat = np.concatenate([mat, mat[:, 2:3]], axis=1)
             mat[:, 2] = mat[:, 2] / image_size[1]
             mat[:, 3] = mat[:, 3] / image_size[0]

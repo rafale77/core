@@ -12,12 +12,12 @@ import functools as ft
 import importlib
 import logging
 import pathlib
-import orjson as json
 import sys
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Callable, Dict, TypedDict, TypeVar, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionStrategy
+import orjson as json
 
 from homeassistant.generated.dhcp import DHCP
 from homeassistant.generated.mqtt import MQTT

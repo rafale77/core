@@ -149,7 +149,9 @@ async def async_setup(hass, config):
             logger.info("Ignoring service: %s %s", service, info)
             return
 
-        discovery_hash = orjson.dumps([service, info], option=orjson.OPT_SORT_KEYS).decode('utf-8')
+        discovery_hash = orjson.dumps(
+            [service, info], option=orjson.OPT_SORT_KEYS
+            ).decode("utf-8")
         if discovery_hash in already_discovered:
             logger.debug("Already discovered service %s %s.", service, info)
             return

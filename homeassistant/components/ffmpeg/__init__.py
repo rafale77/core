@@ -1,10 +1,7 @@
 """Support for FFmpeg."""
 from __future__ import annotations
 
-import asyncio
-import re
-
-from haffmpeg.tools import IMAGE_JPEG, FFVersion, ImageFrame
+from haffmpeg.tools import IMAGE_JPEG
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -12,7 +9,7 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_START,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
@@ -89,7 +86,7 @@ async def async_setup(hass, config):
 
 
 async def async_get_image(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     input_source: str,
     output_format: str = IMAGE_JPEG,
     extra_cmd: str | None = None,

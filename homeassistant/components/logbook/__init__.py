@@ -2,9 +2,9 @@
 from contextlib import suppress
 from datetime import timedelta
 from itertools import groupby
-import orjson as json
 import re
 
+import orjson as json
 import sqlalchemy
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import literal

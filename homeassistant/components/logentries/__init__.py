@@ -1,8 +1,8 @@
 """Support for sending data to Logentries webhook endpoint."""
 import logging
 
-import requests
 import orjson
+import requests
 import voluptuous as vol
 
 from homeassistant.const import CONF_TOKEN, EVENT_STATE_CHANGED
@@ -47,7 +47,7 @@ def setup(hass, config):
         ]
         try:
             payload = {"host": le_wh, "event": json_body}
-            requests.post(le_wh, data=orjson.dumps(payload).decode('utf-8'), timeout=10)
+            requests.post(le_wh, data=orjson.dumps(payload).decode("utf-8"), timeout=10)
         except requests.exceptions.RequestException as error:
             _LOGGER.exception("Error sending to Logentries: %s", error)
 

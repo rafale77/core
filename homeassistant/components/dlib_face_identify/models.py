@@ -148,8 +148,12 @@ class FaceDetector:
         """RetinaFace Detector with 5points landmarks."""
 
         self.ref_pts = get_reference_facial_points()
-        self.model = torch.jit.load(home + "model/RetinaFaceJIT.pth", map_location=device)
-        self.arcmodel = torch.jit.load(home + "model/epoch_16_7.pth", map_location=device)
+        self.model = torch.jit.load(
+            home + "model/RetinaFaceJIT.pth", map_location=device
+        )
+        self.arcmodel = torch.jit.load(
+            home + "model/epoch_16_7.pth", map_location=device
+        )
 
     def detect_align(self, image, img, priors):
         """
@@ -170,7 +174,7 @@ class FaceDetector:
         if len(output[2]) > 0:
             landmarks = postprocess(output, img, priors)
         if isinstance(landmarks, torch.Tensor):
-            warped =[]
+            warped = []
             for src_pts in landmarks:
                 if max(src_pts.shape) < 3 or min(src_pts.shape) != 2:
                     raise _LOGGER.warning(

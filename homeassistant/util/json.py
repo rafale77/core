@@ -4,10 +4,11 @@ from __future__ import annotations
 from collections import deque
 import json
 import logging
-import orjson
 import os
 import tempfile
 from typing import Any, Callable
+
+import orjson
 
 from homeassistant.core import Event, State
 from homeassistant.exceptions import HomeAssistantError
@@ -56,7 +57,7 @@ def save_json(
     """
     try:
         if encoder is None:
-            json_data = orjson.dumps(data).decode('utf-8')
+            json_data = orjson.dumps(data).decode("utf-8")
         else:
             json_data = json.dumps(data, indent=4, cls=encoder)
     except TypeError as error:

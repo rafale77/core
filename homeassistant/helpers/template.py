@@ -1281,7 +1281,7 @@ def from_json(value):
 
 def to_json(value):
     """Convert an object to a JSON string."""
-    return orjson.dumps(value).decode('utf-8')
+    return orjson.dumps(value).decode("utf-8")
 
 
 @contextfilter
