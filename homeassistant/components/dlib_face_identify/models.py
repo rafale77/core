@@ -103,7 +103,7 @@ def decode(loc, priors, variances: List[float]):
 
 
 @torch.jit.script
-def postprocess(input: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], img, priors):
+def postprocess(inp: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], img, priors):
     """Decode-NMS to landmarks."""
     dev = torch.device("cuda:0")
     thresh = 0.99
@@ -113,17 +113,17 @@ def postprocess(input: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], img, pri
     variances = [0.1, 0.2]
 
     # ignore low scores
-    scores = input[1].squeeze(0)
+    scores = inp[1].squeeze(0)
     index = torch.where(scores > thresh)[0]
     if len(index) > 0:
         h, w = img.shape[2], img.shape[3]
-        landmarks = decode_landmark(input[2].squeeze(0), priors, variances)
+        landmarks = decode_landmark(inp[2].squeeze(0), priors, variances)
         landmarks *= torch.as_tensor([w, h, w, h, w, h, w, h, w, h], device=dev)
         landmarks = landmarks[index]
         if len(index) == 1:
             return landmarks.reshape(-1, 5, 2)
 
-        boxes = decode(input[0].data.squeeze(0), priors, variances)
+        boxes = decode(inp[0].data.squeeze(0), priors, variances)
         boxes *= torch.as_tensor([w, h, w, h], device=dev)
 
         boxes = boxes[index]

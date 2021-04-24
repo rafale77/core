@@ -143,7 +143,7 @@ class RestSensor(RestEntity, SensorEntity):
                 or content_type.startswith("application/xhtml+xml")
             ):
                 try:
-                    value = json.dumps(xmltodict.parse(value), cls=JSONEncoder)
+                    value = orjson.dumps(xmltodict.parse(value))
                     _LOGGER.debug("JSON converted from XML: %s", value)
                 except ExpatError:
                     _LOGGER.warning(

@@ -113,7 +113,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             self.names = np.load(self.facebank_path / "names.npy")
             _LOGGER.warning("Faces Loaded")
         except Exception:
-            _LOGGER.warning("Model not trained, retraining...")
+            _LOGGER.warning("Model not trained, retraining")
             faces = []
             names = ["Unknown"]
             folder = home + "recogface/faces/"
@@ -138,7 +138,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
             # np.save(str(self.facebank_path) + "/facebank.pth", self.targets)
             self.names = np.array(names)
             np.save(str(self.facebank_path) + "/names", self.names)
-            _LOGGER.warning("Model training completed and saved...")
+            _LOGGER.warning("Model training completed and saved")
 
     @property
     def state_attributes(self):
