@@ -1,5 +1,4 @@
 """Support for RESTful API sensors."""
-import json
 import logging
 from xml.parsers.expat import ExpatError
 
@@ -23,7 +22,6 @@ from homeassistant.const import (
     CONF_VALUE_TEMPLATE,
 )
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers import JSONEncoder
 import homeassistant.helpers.config_validation as cv
 
 from . import async_get_config_and_coordinator, create_rest_data_from_config
