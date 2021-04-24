@@ -1,6 +1,8 @@
 """Support for FFmpeg."""
 from __future__ import annotations
 
+import asyncio
+
 from haffmpeg.tools import IMAGE_JPEG, ImageFrame
 import voluptuous as vol
 
