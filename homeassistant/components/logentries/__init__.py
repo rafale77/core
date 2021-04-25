@@ -2,6 +2,7 @@
 import json
 import logging
 
+import orjson
 import requests
 import voluptuous as vol
 
@@ -19,6 +20,7 @@ CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: vol.Schema({vol.Required(CONF_TOKEN): cv.string})}, extra=vol.ALLOW_EXTRA
 )
 
+dumps = lambda s: str(orjson.dumps(s), "utf-8")
 
 def setup(hass, config):
     """Set up the Logentries component."""
@@ -46,7 +48,7 @@ def setup(hass, config):
         ]
         try:
             payload = {"host": le_wh, "event": json_body}
-            requests.post(le_wh, data=json.dumps(payload), timeout=10)
+            requests.post(le_wh, data=dumps(payload), timeout=10)
         except requests.exceptions.RequestException as error:
             _LOGGER.exception("Error sending to Logentries: %s", error)
 
