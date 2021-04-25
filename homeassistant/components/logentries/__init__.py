@@ -47,7 +47,7 @@ def setup(hass, config):
         ]
         try:
             payload = {"host": le_wh, "event": json_body}
-            requests.post(le_wh, data=json.dumps(payload, cls=JSONEncoder), timeout=10)
+            requests.post(le_wh, data=json.dumps(payload), timeout=10)
         except requests.exceptions.RequestException as error:
             _LOGGER.exception("Error sending to Logentries: %s", error)
 
