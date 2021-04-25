@@ -8,7 +8,6 @@ import voluptuous as vol
 from homeassistant.const import CONF_TOKEN, EVENT_STATE_CHANGED
 from homeassistant.helpers import state as state_helper
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.json import JSONEncoder
 
 _LOGGER = logging.getLogger(__name__)
 
