@@ -2,7 +2,6 @@
 import json
 import logging
 
-import orjson
 import requests
 import voluptuous as vol
 
