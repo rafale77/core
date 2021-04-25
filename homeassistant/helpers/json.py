@@ -1,4 +1,5 @@
 """Helpers to help with encoding Home Assistant objects in JSON."""
+import json
 from datetime import datetime
 from typing import Any
 
