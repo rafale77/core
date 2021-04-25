@@ -1,16 +1,26 @@
 """The Z-Wave JS integration."""
+from __future__ import annotations
+
 import asyncio
-from typing import Callable, List
+from typing import Callable
 
 from async_timeout import timeout
 from zwave_js_server.client import Client as ZwaveClient
 from zwave_js_server.exceptions import BaseZwaveJSServerError, InvalidServerVersion
 from zwave_js_server.model.node import Node as ZwaveNode
-from zwave_js_server.model.notification import Notification
+from zwave_js_server.model.notification import (
+    EntryControlNotification,
+    NotificationNotification,
+)
 from zwave_js_server.model.value import ValueNotification
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_DOMAIN, CONF_URL, EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import (
+    ATTR_DEVICE_ID,
+    ATTR_DOMAIN,
+    CONF_URL,
+    EVENT_HOMEASSISTANT_STOP,
+)
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry, entity_registry
@@ -22,8 +32,12 @@ from .api import async_register_api
 from .const import (
     ATTR_COMMAND_CLASS,
     ATTR_COMMAND_CLASS_NAME,
-    ATTR_DEVICE_ID,
+    ATTR_DATA_TYPE,
     ATTR_ENDPOINT,
+    ATTR_EVENT,
+    ATTR_EVENT_DATA,
+    ATTR_EVENT_LABEL,
+    ATTR_EVENT_TYPE,
     ATTR_HOME_ID,
     ATTR_LABEL,
     ATTR_NODE_ID,
@@ -45,10 +59,12 @@ from .const import (
     EVENT_DEVICE_ADDED_TO_REGISTRY,
     LOGGER,
     PLATFORMS,
-    ZWAVE_JS_EVENT,
+    ZWAVE_JS_NOTIFICATION_EVENT,
+    ZWAVE_JS_VALUE_NOTIFICATION_EVENT,
 )
 from .discovery import async_discover_values
-from .helpers import get_device_id, get_old_value_id, get_unique_id
+from .helpers import get_device_id
+from .migrate import async_migrate_discovered_value
 from .services import ZWaveServices
 
 CONNECT_TIMEOUT = 10
@@ -95,33 +111,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_ensure_addon_running(hass, entry)
 
     client = ZwaveClient(entry.data[CONF_URL], async_get_clientsession(hass))
-    dev_reg = await device_registry.async_get_registry(hass)
+    dev_reg = device_registry.async_get(hass)
     ent_reg = entity_registry.async_get(hass)
-
-    @callback
-    def migrate_entity(platform: str, old_unique_id: str, new_unique_id: str) -> None:
-        """Check if entity with old unique ID exists, and if so migrate it to new ID."""
-        if entity_id := ent_reg.async_get_entity_id(platform, DOMAIN, old_unique_id):
-            LOGGER.debug(
-                "Migrating entity %s from old unique ID '%s' to new unique ID '%s'",
-                entity_id,
-                old_unique_id,
-                new_unique_id,
-            )
-            try:
-                ent_reg.async_update_entity(
-                    entity_id,
-                    new_unique_id=new_unique_id,
-                )
-            except ValueError:
-                LOGGER.debug(
-                    (
-                        "Entity %s can't be migrated because the unique ID is taken. "
-                        "Cleaning it up since it is likely no longer valid."
-                    ),
-                    entity_id,
-                )
-                ent_reg.async_remove(entity_id)
 
     @callback
     def async_on_node_ready(node: ZwaveNode) -> None:
@@ -136,49 +127,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             LOGGER.debug("Discovered entity: %s", disc_info)
 
             # This migration logic was added in 2021.3 to handle a breaking change to
-            # the value_id format. Some time in the future, this code block
-            # (as well as get_old_value_id helper and migrate_entity closure) can be
-            # removed.
-            value_ids = [
-                # 2021.2.* format
-                get_old_value_id(disc_info.primary_value),
-                # 2021.3.0b0 format
-                disc_info.primary_value.value_id,
-            ]
-
-            new_unique_id = get_unique_id(
-                client.driver.controller.home_id,
-                disc_info.primary_value.value_id,
-            )
-
-            for value_id in value_ids:
-                old_unique_id = get_unique_id(
-                    client.driver.controller.home_id,
-                    f"{disc_info.primary_value.node.node_id}.{value_id}",
-                )
-                # Most entities have the same ID format, but notification binary sensors
-                # have a state key in their ID so we need to handle them differently
-                if (
-                    disc_info.platform == "binary_sensor"
-                    and disc_info.platform_hint == "notification"
-                ):
-                    for state_key in disc_info.primary_value.metadata.states:
-                        # ignore idle key (0)
-                        if state_key == "0":
-                            continue
-
-                        migrate_entity(
-                            disc_info.platform,
-                            f"{old_unique_id}.{state_key}",
-                            f"{new_unique_id}.{state_key}",
-                        )
-
-                    # Once we've iterated through all state keys, we can move on to the
-                    # next item
-                    continue
-
-                migrate_entity(disc_info.platform, old_unique_id, new_unique_id)
-
+            # the value_id format. Some time in the future, this call (as well as the
+            # helper functions) can be removed.
+            async_migrate_discovered_value(ent_reg, client, disc_info)
             async_dispatcher_send(
                 hass, f"{DOMAIN}_{entry.entry_id}_add_{disc_info.platform}", disc_info
             )
@@ -201,7 +152,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             async_on_node_ready(node)
             return
         # if node is not yet ready, register one-time callback for ready state
-        LOGGER.debug("Node added: %s - waiting for it to become ready.", node.node_id)
+        LOGGER.debug("Node added: %s - waiting for it to become ready", node.node_id)
         node.once(
             "ready",
             lambda event: async_on_node_ready(event["node"]),
@@ -227,9 +178,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if notification.metadata.states:
             value = notification.metadata.states.get(str(value), value)
         hass.bus.async_fire(
-            ZWAVE_JS_EVENT,
+            ZWAVE_JS_VALUE_NOTIFICATION_EVENT,
             {
-                ATTR_TYPE: "value_notification",
                 ATTR_DOMAIN: DOMAIN,
                 ATTR_NODE_ID: notification.node.node_id,
                 ATTR_HOME_ID: client.driver.controller.home_id,
@@ -248,21 +198,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     @callback
-    def async_on_notification(notification: Notification) -> None:
+    def async_on_notification(
+        notification: EntryControlNotification | NotificationNotification,
+    ) -> None:
         """Relay stateless notification events from Z-Wave nodes to hass."""
         device = dev_reg.async_get_device({get_device_id(client, notification.node)})
-        hass.bus.async_fire(
-            ZWAVE_JS_EVENT,
-            {
-                ATTR_TYPE: "notification",
-                ATTR_DOMAIN: DOMAIN,
-                ATTR_NODE_ID: notification.node.node_id,
-                ATTR_HOME_ID: client.driver.controller.home_id,
-                ATTR_DEVICE_ID: device.id,  # type: ignore
-                ATTR_LABEL: notification.notification_label,
-                ATTR_PARAMETERS: notification.parameters,
-            },
-        )
+        event_data = {
+            ATTR_DOMAIN: DOMAIN,
+            ATTR_NODE_ID: notification.node.node_id,
+            ATTR_HOME_ID: client.driver.controller.home_id,
+            ATTR_DEVICE_ID: device.id,  # type: ignore
+            ATTR_COMMAND_CLASS: notification.command_class,
+        }
+
+        if isinstance(notification, EntryControlNotification):
+            event_data.update(
+                {
+                    ATTR_COMMAND_CLASS_NAME: "Entry Control",
+                    ATTR_EVENT_TYPE: notification.event_type,
+                    ATTR_DATA_TYPE: notification.data_type,
+                    ATTR_EVENT_DATA: notification.event_data,
+                }
+            )
+        else:
+            event_data.update(
+                {
+                    ATTR_COMMAND_CLASS_NAME: "Notification",
+                    ATTR_LABEL: notification.label,
+                    ATTR_TYPE: notification.type_,
+                    ATTR_EVENT: notification.event,
+                    ATTR_EVENT_LABEL: notification.event_label,
+                    ATTR_PARAMETERS: notification.parameters,
+                }
+            )
+
+        hass.bus.async_fire(ZWAVE_JS_NOTIFICATION_EVENT, event_data)
 
     entry_hass_data: dict = hass.data[DOMAIN].setdefault(entry.entry_id, {})
     # connect and throw error if connection failed
@@ -286,7 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_hass_data[DATA_CONNECT_FAILED_LOGGED] = False
         entry_hass_data[DATA_INVALID_SERVER_VERSION_LOGGED] = False
 
-    unsubscribe_callbacks: List[Callable] = []
+    unsubscribe_callbacks: list[Callable] = []
     entry_hass_data[DATA_CLIENT] = client
     entry_hass_data[DATA_UNSUBSCRIBE] = unsubscribe_callbacks
 
@@ -301,8 +271,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # wait until all required platforms are ready
         await asyncio.gather(
             *[
-                hass.config_entries.async_forward_entry_setup(entry, component)
-                for component in PLATFORMS
+                hass.config_entries.async_forward_entry_setup(entry, platform)
+                for platform in PLATFORMS
             ]
         )
 
@@ -411,8 +381,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = all(
         await asyncio.gather(
             *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in PLATFORMS
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
             ]
         )
     )
@@ -483,11 +453,15 @@ async def async_ensure_addon_running(hass: HomeAssistant, entry: ConfigEntry) ->
     network_key: str = entry.data[CONF_NETWORK_KEY]
 
     if not addon_is_installed:
-        addon_manager.async_schedule_install_addon(usb_path, network_key)
+        addon_manager.async_schedule_install_setup_addon(
+            usb_path, network_key, catch_error=True
+        )
         raise ConfigEntryNotReady
 
     if not addon_is_running:
-        addon_manager.async_schedule_setup_addon(usb_path, network_key)
+        addon_manager.async_schedule_setup_addon(
+            usb_path, network_key, catch_error=True
+        )
         raise ConfigEntryNotReady
 
 
@@ -497,4 +471,4 @@ def async_ensure_addon_updated(hass: HomeAssistant) -> None:
     addon_manager: AddonManager = get_addon_manager(hass)
     if addon_manager.task_in_progress():
         raise ConfigEntryNotReady
-    addon_manager.async_schedule_update_addon()
+    addon_manager.async_schedule_update_addon(catch_error=True)
