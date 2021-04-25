@@ -1,7 +1,7 @@
 """Support for sending data to Logentries webhook endpoint."""
+import json
 import logging
 
-import orjson
 import requests
 import voluptuous as vol
 
@@ -46,7 +46,7 @@ def setup(hass, config):
         ]
         try:
             payload = {"host": le_wh, "event": json_body}
-            requests.post(le_wh, data=str(orjson.dumps(payload), "utf-8"), timeout=10)
+            requests.post(le_wh, data=json.dumps(payload), timeout=10)
         except requests.exceptions.RequestException as error:
             _LOGGER.exception("Error sending to Logentries: %s", error)
 
