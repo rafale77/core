@@ -5,6 +5,7 @@ from typing import Any
 
 import orjson
 
+
 class JSONEncoder(json.JSONEncoder):
     """JSONEncoder that supports Home Assistant objects."""
 
