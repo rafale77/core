@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime as dt, timedelta
 from itertools import groupby
 import logging
 import time
-from typing import Iterable, cast
+from typing import cast
 
 from aiohttp import web
 import orjson as json

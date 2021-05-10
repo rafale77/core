@@ -19,6 +19,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import Session
 
+from homeassistant.const import MAX_LENGTH_EVENT_TYPE
 from homeassistant.core import Context, Event, EventOrigin, State, split_entity_id
 from homeassistant.helpers.json import JSONEncoder
 import homeassistant.util.dt as dt_util
@@ -27,7 +28,7 @@ import homeassistant.util.dt as dt_util
 # pylint: disable=invalid-name
 Base = declarative_base()
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class Events(Base):  # type: ignore
     }
     __tablename__ = TABLE_EVENTS
     event_id = Column(Integer, primary_key=True)
-    event_type = Column(String(32))
+    event_type = Column(String(MAX_LENGTH_EVENT_TYPE))
     event_data = Column(Text().with_variant(mysql.LONGTEXT, "mysql"))
     origin = Column(String(32))
     time_fired = Column(DATETIME_TYPE, index=True)
