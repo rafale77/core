@@ -66,15 +66,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     coap_context = await get_coap_context(hass)
 
-    try:
-        async with async_timeout.timeout(SETUP_ENTRY_TIMEOUT_SEC):
-            device = await aioshelly.Device.create(
-                aiohttp_client.async_get_clientsession(hass),
-                coap_context,
-                options,
-            )
-    except (asyncio.TimeoutError, OSError) as err:
-        raise ConfigEntryNotReady from err
+    device = await aioshelly.Device.create(
+        aiohttp_client.async_get_clientsession(hass),
+        coap_context,
+        options,
+        False,
+    )
 
     dev_reg = await device_registry.async_get_registry(hass)
     identifier = (DOMAIN, entry.unique_id)
@@ -308,7 +305,7 @@ class ShellyDeviceRestWrapper(update_coordinator.DataUpdateCoordinator):
     async def _async_update_data(self):
         """Fetch data."""
         try:
-            async with async_timeout.timeout(5):
+            async with async_timeout.timeout(AIOSHELLY_DEVICE_TIMEOUT_SEC):
                 _LOGGER.debug("REST update for %s", self.name)
                 return await self.device.update_status()
         except OSError as err:
