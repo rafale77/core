@@ -125,7 +125,7 @@ class DlibFaceIdentifyEntity(ImageProcessingFaceEntity):
                     pic = cv2.imread(folder + person + "/" + person_img)
                     img = self.preprocessor(pic)
                     priors = self.prior_box(img.shape[2:])
-                    emb = self.face_detector.detect_align(pic, img, priors)[0]
+                    emb = self.face_detector.detect_align(pic, img, priors)
                     if len(emb) == 1:
                         embs.append(emb)
                     else:
